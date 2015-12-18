@@ -1,5 +1,7 @@
 package play.api.inject
 
+import play.api.inject.BindingKey
+
 import scala.reflect.ClassTag
 
 package object spring {

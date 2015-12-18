@@ -3,8 +3,10 @@ package play.api.inject.spring
 import java.io.File
 
 import loader.SpringInjector
+import org.springframework.context.support.GenericApplicationContext
 import play.api.inject._
 import play.api.inject.guice.{GuiceInjector, GuiceableModuleConversions, GuiceableModule}
+import play.api.inject.spring.bind
 import play.api.{PlayException, Mode, Configuration, Environment}
 import play.api.inject.{ Binding => PlayBinding, BindingKey, Injector => PlayInjector, Module => PlayModule }
 
@@ -107,10 +109,10 @@ abstract class SpringBuilder[Self] protected (
   def createModule(): SpringModule = {
     import scala.collection.JavaConverters._
     val injectorModule = SpringableModule.spring(Seq(
-      bind[PlayInjector].to[SpringInjector],
+      _root_.spring.bind[PlayInjector].to[SpringInjector],
       // Java API injector is bound here so that it's available in both
       // the default application loader and the Java Guice builders
-      bind[play.inject.Injector].to[play.inject.DelegateInjector]
+      _root_.spring.bind[play.inject.Injector].to[play.inject.DelegateInjector]
     ))
     val enabledModules = modules.map(_.disable(disabled))
     val bindingModules = SpringableModule.spring(environment, configuration)(enabledModules) :+ injectorModule
@@ -122,20 +124,15 @@ abstract class SpringBuilder[Self] protected (
    * Create a Play Injector backed by Guice using this configured builder.
    */
   def injector(): PlayInjector = {
-    try {
-      val stage = environment.mode match {
-        case Mode.Prod => Stage.PRODUCTION
-        case _ if eagerly => Stage.PRODUCTION
-        case _ => Stage.DEVELOPMENT
-      }
-      val springInjector = Spring.createInjector(stage, applicationModule())
-      springInjector.getInstance(classOf[PlayInjector])
-    } catch {
-      case e: CreationException => e.getCause match {
-        case p: PlayException => throw p
-        case _ => throw e
-      }
-    }
+
+    val springContext = applicationContext()
+
+    springContext.getBean(classOf[PlayInjector])
+
+  }
+
+  def applicationContext(): GenericApplicationContext = {
+    
   }
 
   /**

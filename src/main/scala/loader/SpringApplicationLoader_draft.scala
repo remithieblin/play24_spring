@@ -61,7 +61,7 @@ class SpringApplicationLoader_draft extends ApplicationLoader {
 
 
       // Register the Spring injector as a singleton first
-      beanFactory.registerSingleton("play-injector", new SpringInjector(beanFactory))
+//      beanFactory.registerSingleton("play-injector", new SpringInjector(beanFactory))
 
       modules.foreach {
         case playModule: Module => playModule.bindings(environment, configuration).foreach(b => bind(beanFactory, b))

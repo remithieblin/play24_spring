@@ -1,7 +1,13 @@
 package play.api.inject.spring
 
+import javax.inject.Inject
+
+import org.springframework.context.support.GenericApplicationContext
+import play.api.inject.guice.{GuiceLoadException, GuiceKey}
 import play.api.{PlayException, Configuration, Environment}
 import play.api.inject._
+
+import scala.reflect.ClassTag
 
 class SpringInjectorBuilder {
 
@@ -88,13 +94,20 @@ trait SpringableModuleConversions {
    * Convert the given Play bindings to a Guice module.
    */
   def spring(bindings: Seq[Binding[_]]): Class[_] = {
+
+
+    for (b <- bindings) {
+//      b.
+    }
+
+
     new com.google.inject.AbstractModule {
       def configure(): Unit = {
         for (b <- bindings) {
-          val binding = b.asInstanceOf[PlayBinding[Any]]
+          val binding = b.asInstanceOf[Binding[Any]]
           val builder = binder().withSource(binding).bind(GuiceKey(binding.key))
           binding.target.foreach {
-            case ProviderTarget(provider) => builder.toProvider(GuiceProviders.guicify(provider))
+//            case ProviderTarget(provider) => builder.toProvider(GuiceProviders.guicify(provider))
             case ProviderConstructionTarget(provider) => builder.toProvider(provider)
             case ConstructionTarget(implementation) => builder.to(implementation)
             case BindingKeyTarget(key) => builder.to(GuiceKey(key))
@@ -110,4 +123,24 @@ trait SpringableModuleConversions {
     }
   }
 
+}
+
+/**
+ * Play Injector backed by a Guice Injector.
+ */
+class SpringInjector @Inject() (springContext: GenericApplicationContext) extends Injector {
+  /**
+   * Get an instance of the given class from the injector.
+   */
+  def instanceOf[T](implicit ct: ClassTag[T]) = instanceOf(ct.runtimeClass.asInstanceOf[Class[T]])
+
+  /**
+   * Get an instance of the given class from the injector.
+   */
+  def instanceOf[T](clazz: Class[T]) = springContext.getBean[T](clazz)
+
+  /**
+   * Get an instance bound to the given binding key.
+   */
+  def instanceOf[T](key: BindingKey[T]) = ???
 }
