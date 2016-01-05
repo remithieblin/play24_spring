@@ -6,8 +6,168 @@ import org.springframework.context.support.GenericApplicationContext
 import play.api.inject.guice.{GuiceLoadException, GuiceKey}
 import play.api.{PlayException, Configuration, Environment}
 import play.api.inject._
+import play.api.inject.{ Binding => PlayBinding, BindingKey, Injector => PlayInjector, Module => PlayModule }
 
 import scala.reflect.ClassTag
+
+
+
+
+/**
+ * A builder for creating Guice-backed Play Injectors.
+ */
+abstract class GuiceBuilder[Self] protected (
+                                              environment: Environment,
+                                              configuration: Configuration,
+                                              modules: Seq[GuiceableModule],
+                                              overrides: Seq[GuiceableModule],
+                                              disabled: Seq[Class[_]],
+                                              eagerly: Boolean) {
+
+  /**
+   * Set the environment.
+   */
+  final def in(env: Environment): Self =
+    copyBuilder(environment = env)
+
+  /**
+   * Set the environment path.
+   */
+  final def in(path: File): Self =
+    copyBuilder(environment = environment.copy(rootPath = path))
+
+  /**
+   * Set the environment mode.
+   */
+  final def in(mode: Mode.Mode): Self =
+    copyBuilder(environment = environment.copy(mode = mode))
+
+  /**
+   * Set the environment class loader.
+   */
+  final def in(classLoader: ClassLoader): Self =
+    copyBuilder(environment = environment.copy(classLoader = classLoader))
+
+  /**
+   * Set the dependency initialization to eager.
+   */
+  final def eagerlyLoaded(): Self =
+    copyBuilder(eagerly = true)
+
+  /**
+   * Add additional configuration.
+   */
+  final def configure(conf: Configuration): Self =
+    copyBuilder(configuration = configuration ++ conf)
+
+  /**
+   * Add additional configuration.
+   */
+  final def configure(conf: Map[String, Any]): Self =
+    configure(Configuration.from(conf))
+
+  /**
+   * Add additional configuration.
+   */
+  final def configure(conf: (String, Any)*): Self =
+    configure(conf.toMap)
+
+  /**
+   * Add Guice modules, Play modules, or Play bindings.
+   *
+   * @see [[GuiceableModuleConversions]] for the automatically available implicit
+   *      conversions to [[GuiceableModule]] from modules and bindings.
+   */
+  final def bindings(bindModules: GuiceableModule*): Self =
+    copyBuilder(modules = modules ++ bindModules)
+
+  /**
+   * Override bindings using Guice modules, Play modules, or Play bindings.
+   *
+   * @see [[GuiceableModuleConversions]] for the automatically available implicit
+   *      conversions to [[GuiceableModule]] from modules and bindings.
+   */
+  final def overrides(overrideModules: GuiceableModule*): Self =
+    copyBuilder(overrides = overrides ++ overrideModules)
+
+  /**
+   * Disable modules by class.
+   */
+  final def disable(moduleClasses: Class[_]*): Self =
+    copyBuilder(disabled = disabled ++ moduleClasses)
+
+  /**
+   * Disable module by class.
+   */
+  final def disable[T](implicit tag: ClassTag[T]): Self = disable(tag.runtimeClass)
+
+  /**
+   * Create a Play Injector backed by Guice using this configured builder.
+   */
+  def applicationModule(ctx: GenericApplicationContext): SpringModule = createModule(ctx)
+
+  /**
+   * Creation of the Guice Module used by the injector.
+   * Libraries like Guiceberry and Jukito that want to handle injector creation may find this helpful.
+   */
+  def createModule(ctx: GenericApplicationContext): SpringModule = {
+    import scala.collection.JavaConverters._
+    val injectorModule = GuiceableModule.guice(Seq(
+      bind[PlayInjector].to[GuiceInjector],
+      // Java API injector is bound here so that it's available in both
+      // the default application loader and the Java Guice builders
+      bind[play.inject.Injector].to[play.inject.DelegateInjector]
+    ))
+    val enabledModules = modules.map(_.disable(disabled))
+    val bindingModules = SpringableModule.spring(environment, configuration)(enabledModules) :+ injectorModule
+    val overrideModules = GuiceableModule.guiced(environment, configuration)(overrides)
+    GuiceModules.`override`(bindingModules.asJava).`with`(overrideModules.asJava)
+  }
+
+  /**
+   * Create a Play Injector backed by Guice using this configured builder.
+   */
+  def injector(): PlayInjector = {
+
+    val springContext = applicationContext()
+
+
+    springContext.getBean(classOf[PlayInjector])
+
+  }
+
+  def applicationContext(): GenericApplicationContext = {
+    new GenericApplicationContext()
+  }
+
+  /**
+   * Internal copy method with defaults.
+   */
+  private def copyBuilder(
+                           environment: Environment = environment,
+                           configuration: Configuration = configuration,
+                           modules: Seq[GuiceableModule] = modules,
+                           overrides: Seq[GuiceableModule] = overrides,
+                           disabled: Seq[Class[_]] = disabled,
+                           eagerly: Boolean = eagerly): Self =
+    newBuilder(environment, configuration, modules, overrides, disabled, eagerly)
+
+  /**
+   * Create a new Self for this immutable builder.
+   * Provided by builder implementations.
+   */
+  protected def newBuilder(
+                            environment: Environment,
+                            configuration: Configuration,
+                            modules: Seq[GuiceableModule],
+                            overrides: Seq[GuiceableModule],
+                            disabled: Seq[Class[_]],
+                            eagerly: Boolean): Self
+
+}
+
+
+
 
 class SpringInjectorBuilder {
 
@@ -91,13 +251,13 @@ trait SpringableModuleConversions {
     spring(module.bindings(env, conf))
 
   /**
-   * Convert the given Play bindings to a Guice module.
+   * Convert the given Play bindings to a Spring configuration.
    */
   def spring(bindings: Seq[Binding[_]]): Class[_] = {
 
 
     for (b <- bindings) {
-//      b.
+      b.
     }
 
 

@@ -97,9 +97,6 @@ abstract class SpringBuilder[Self] protected (
    */
   final def disable[T](implicit tag: ClassTag[T]): Self = disable(tag.runtimeClass)
 
-  /**
-   * Create a Play Injector backed by Guice using this configured builder.
-   */
   def applicationModule(): SpringModule = createModule
 
   /**
@@ -118,21 +115,6 @@ abstract class SpringBuilder[Self] protected (
     val bindingModules = SpringableModule.spring(environment, configuration)(enabledModules) :+ injectorModule
     val overrideModules = SpringableModule.springed(environment, configuration)(overrides)
     SpringModules.`override`(bindingModules.asJava).`with`(overrideModules.asJava)
-  }
-
-  /**
-   * Create a Play Injector backed by Guice using this configured builder.
-   */
-  def injector(): PlayInjector = {
-
-    val springContext = applicationContext()
-
-    springContext.getBean(classOf[PlayInjector])
-
-  }
-
-  def applicationContext(): GenericApplicationContext = {
-    
   }
 
   /**
