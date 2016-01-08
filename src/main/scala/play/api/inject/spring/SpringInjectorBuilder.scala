@@ -4,7 +4,8 @@ import javax.inject.Inject
 
 import org.springframework.context.support.GenericApplicationContext
 import play.api.inject.guice.{GuiceLoadException, GuiceKey}
-import play.api.{PlayException, Configuration, Environment}
+import play.api.{ Configuration, Environment, Mode, PlayException }
+import java.io.File
 import play.api.inject._
 import play.api.inject.{ Binding => PlayBinding, BindingKey, Injector => PlayInjector, Module => PlayModule }
 
@@ -19,8 +20,8 @@ import scala.reflect.ClassTag
 abstract class GuiceBuilder[Self] protected (
                                               environment: Environment,
                                               configuration: Configuration,
-                                              modules: Seq[GuiceableModule],
-                                              overrides: Seq[GuiceableModule],
+                                              modules: Seq[SpringableModule],
+                                              overrides: Seq[SpringableModule],
                                               disabled: Seq[Class[_]],
                                               eagerly: Boolean) {
 
@@ -75,19 +76,19 @@ abstract class GuiceBuilder[Self] protected (
   /**
    * Add Guice modules, Play modules, or Play bindings.
    *
-   * @see [[GuiceableModuleConversions]] for the automatically available implicit
-   *      conversions to [[GuiceableModule]] from modules and bindings.
+   * @see [[SpringableModuleConversions]] for the automatically available implicit
+   *      conversions to [[SpringableModule]] from modules and bindings.
    */
-  final def bindings(bindModules: GuiceableModule*): Self =
+  final def bindings(bindModules: SpringableModule*): Self =
     copyBuilder(modules = modules ++ bindModules)
 
   /**
    * Override bindings using Guice modules, Play modules, or Play bindings.
    *
-   * @see [[GuiceableModuleConversions]] for the automatically available implicit
-   *      conversions to [[GuiceableModule]] from modules and bindings.
+   * @see [[SpringableModuleConversions]] for the automatically available implicit
+   *      conversions to [[SpringableModule]] from modules and bindings.
    */
-  final def overrides(overrideModules: GuiceableModule*): Self =
+  final def overrides(overrideModules: SpringableModule*): Self =
     copyBuilder(overrides = overrides ++ overrideModules)
 
   /**
@@ -104,24 +105,25 @@ abstract class GuiceBuilder[Self] protected (
   /**
    * Create a Play Injector backed by Guice using this configured builder.
    */
-  def applicationModule(ctx: GenericApplicationContext): SpringModule = createModule(ctx)
+  def applicationModule(ctx: GenericApplicationContext): Class[_] = createModule(ctx)
 
   /**
    * Creation of the Guice Module used by the injector.
    * Libraries like Guiceberry and Jukito that want to handle injector creation may find this helpful.
    */
-  def createModule(ctx: GenericApplicationContext): SpringModule = {
+  def createModule(ctx: GenericApplicationContext): Class[_] = {
     import scala.collection.JavaConverters._
-    val injectorModule = GuiceableModule.guice(Seq(
-      bind[PlayInjector].to[GuiceInjector],
+    val injectorModule = SpringableModule.spring(ctx, Seq(
+      bind[PlayInjector].to[SpringInjector],
       // Java API injector is bound here so that it's available in both
       // the default application loader and the Java Guice builders
       bind[play.inject.Injector].to[play.inject.DelegateInjector]
     ))
     val enabledModules = modules.map(_.disable(disabled))
-    val bindingModules = SpringableModule.spring(environment, configuration)(enabledModules) :+ injectorModule
-    val overrideModules = GuiceableModule.guiced(environment, configuration)(overrides)
-    GuiceModules.`override`(bindingModules.asJava).`with`(overrideModules.asJava)
+    val bindingModules = SpringableModule.springed(environment, configuration)(enabledModules) :+ injectorModule
+    val overrideModules = SpringableModule.springed(environment, configuration)(overrides)
+    ctx.
+//    SpringModules.`override`(bindingModules.asJava).`with`(overrideModules.asJava)
   }
 
   /**
@@ -146,8 +148,8 @@ abstract class GuiceBuilder[Self] protected (
   private def copyBuilder(
                            environment: Environment = environment,
                            configuration: Configuration = configuration,
-                           modules: Seq[GuiceableModule] = modules,
-                           overrides: Seq[GuiceableModule] = overrides,
+                           modules: Seq[SpringableModule] = modules,
+                           overrides: Seq[SpringableModule] = overrides,
                            disabled: Seq[Class[_]] = disabled,
                            eagerly: Boolean = eagerly): Self =
     newBuilder(environment, configuration, modules, overrides, disabled, eagerly)
@@ -159,8 +161,8 @@ abstract class GuiceBuilder[Self] protected (
   protected def newBuilder(
                             environment: Environment,
                             configuration: Configuration,
-                            modules: Seq[GuiceableModule],
-                            overrides: Seq[GuiceableModule],
+                            modules: Seq[SpringableModule],
+                            overrides: Seq[SpringableModule],
                             disabled: Seq[Class[_]],
                             eagerly: Boolean): Self
 
@@ -186,15 +188,15 @@ trait SpringableModule {
  */
 object SpringableModule extends SpringableModuleConversions {
 
-  def loadModules(environment: Environment, configuration: Configuration): Seq[SpringableModule] = {
-    Modules.locate(environment, configuration) map springable
+  def loadModules(environment: Environment, configuration: Configuration, ctx: GenericApplicationContext): Seq[SpringableModule] = {
+    Modules.locate(environment, configuration) map { module => springable(module, ctx) }
   }
 
   /**
    * Attempt to convert a module of unknown type to a GuiceableModule.
    */
-  def springable(module: Any): SpringableModule = module match {
-    case playModule: Module => fromPlayModule(playModule)
+  def springable(module: Any, ctx:GenericApplicationContext): SpringableModule = module match {
+    case playModule: Module => fromPlayModule(playModule, ctx)
     case annotatedClass: Class[_] => fromSpringClass(annotatedClass)
     case unknown => throw new PlayException(
       "Unknown module type",
@@ -225,18 +227,18 @@ trait SpringableModuleConversions {
     override def toString = s"SpringableModule(${annotatedClasses.mkString(", ")})"
   }
 
-  implicit def fromPlayModule(playModule: Module): SpringableModule = fromPlayModules(Seq(playModule))
+  implicit def fromPlayModule(playModule: Module, ctx: GenericApplicationContext): SpringableModule = fromPlayModules(Seq(playModule), ctx)
 
-  implicit def fromPlayModules(playModules: Seq[Module]): SpringableModule = new SpringableModule {
-    def springed(env: Environment, conf: Configuration): Seq[Class[_]] = playModules.map(spring(env, conf))
-    def disable(classes: Seq[Class[_]]): SpringableModule = fromPlayModules(filterOut(classes, playModules))
+  implicit def fromPlayModules(playModules: Seq[Module], ctx: GenericApplicationContext): SpringableModule = new SpringableModule {
+    def springed(env: Environment, conf: Configuration): Seq[Class[_]] = playModules.map(spring(env, conf, ctx))
+    def disable(classes: Seq[Class[_]]): SpringableModule = fromPlayModules(filterOut(classes, playModules), ctx)
     override def toString = s"SpringableModule(${playModules.mkString(", ")})"
   }
 
-  implicit def fromPlayBinding(binding: Binding[_]): SpringableModule = fromPlayBindings(Seq(binding))
+  implicit def fromPlayBinding(binding: Binding[_], ctx: GenericApplicationContext): SpringableModule = fromPlayBindings(Seq(binding), ctx)
 
-  implicit def fromPlayBindings(bindings: Seq[Binding[_]]): SpringableModule = new SpringableModule {
-    def springed(env: Environment, conf: Configuration): Seq[Class[_]] = Seq(spring(bindings))
+  implicit def fromPlayBindings(bindings: Seq[Binding[_]], ctx: GenericApplicationContext): SpringableModule = new SpringableModule {
+    def springed(env: Environment, conf: Configuration): Seq[Class[_]] = Seq(spring(ctx, bindings))
     def disable(classes: Seq[Class[_]]): SpringableModule = this // no filtering
     override def toString = s"SpringableModule(${bindings.mkString(", ")})"
   }
@@ -247,17 +249,17 @@ trait SpringableModuleConversions {
   /**
    * Convert the given Play module to a Guice module.
    */
-  def spring(env: Environment, conf: Configuration)(module: Module): Class[_] =
-    spring(module.bindings(env, conf))
+  def spring(env: Environment, conf: Configuration, ctx: GenericApplicationContext)(module: Module): Class[_] =
+    spring(ctx, module.bindings(env, conf))
 
   /**
    * Convert the given Play bindings to a Spring configuration.
    */
-  def spring(bindings: Seq[Binding[_]]): Class[_] = {
+  def spring(ctx: GenericApplicationContext, bindings: Seq[Binding[_]]): Class[_] = {
 
 
     for (b <- bindings) {
-      b.
+//      b.
     }
 
 
