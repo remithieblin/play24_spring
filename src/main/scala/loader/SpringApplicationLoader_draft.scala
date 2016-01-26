@@ -2,12 +2,14 @@ package loader
 
 import java.lang.annotation.Annotation
 
+import config.AppConfig
 import org.springframework.beans.TypeConverter
 import org.springframework.beans.factory.{NoUniqueBeanDefinitionException, NoSuchBeanDefinitionException, FactoryBean}
 import org.springframework.beans.factory.annotation.{AutowiredAnnotationBeanPostProcessor, QualifierAnnotationAutowireCandidateResolver}
 import org.springframework.beans.factory.config.{BeanDefinitionHolder, AutowireCapableBeanFactory, BeanDefinition, ConstructorArgumentValues}
 import org.springframework.beans.factory.support.{DefaultListableBeanFactory, GenericBeanDefinition, _}
 import org.springframework.context.ApplicationContext
+import org.springframework.context.annotation.AnnotationConfigApplicationContext
 import org.springframework.context.support.GenericApplicationContext
 import org.springframework.core.annotation.AnnotationUtils
 import play.api.ApplicationLoader.Context
@@ -24,12 +26,14 @@ class SpringApplicationLoader_draft extends ApplicationLoader {
     def load(context: Context) = {
       val env = context.environment
 
+
+      val configuration = context.initialConfiguration
       // Create the global first
       val global = GlobalSettings(context.initialConfiguration, env)
 
       // Create the final configuration
       // todo - abstract this logic out into something pluggable, with the default delegating to global
-      val configuration = global.onLoadConfig(context.initialConfiguration, env.rootPath, env.classLoader, env.mode)
+//      val configuration = global.onLoadConfig(context.initialConfiguration, env.rootPath, env.classLoader, env.mode)
 
 //      Logger.configure(env.rootPath, configuration, env.mode)
 
@@ -37,6 +41,7 @@ class SpringApplicationLoader_draft extends ApplicationLoader {
       val modules = new Module {
         def bindings(environment: Environment, configuration: Configuration) = Seq(
           BindingKey(classOf[GlobalSettings]) to global,
+//          BindingKey(classOf[Configuration]) to configuration,
           BindingKey(classOf[OptionalSourceMapper]) to new OptionalSourceMapper(context.sourceMapper),
           BindingKey(classOf[WebCommands]) to context.webCommands
         )} +: Modules.locate(env, configuration)
@@ -49,19 +54,23 @@ class SpringApplicationLoader_draft extends ApplicationLoader {
 //      Some(createApplicationContext(environment, configuration, modules).getBean(classOf[Injector]))
 //    }
 
+
+
     /**
      * Creates an application context for the given modules
      */
     private def createApplicationContext(environment: Environment, configuration: Configuration, modules: Seq[Any]): ApplicationContext = {
 
       // todo, use an xml or classpath scanning context or something not dumb
-      val ctx = new GenericApplicationContext()
+//      val ctx = new GenericApplicationContext()
+      val ctx = new AnnotationConfigApplicationContext(classOf[AppConfig])
       val beanFactory = ctx.getDefaultListableBeanFactory
       beanFactory.setAutowireCandidateResolver(new QualifierAnnotationAutowireCandidateResolver())
 
 
       // Register the Spring injector as a singleton first
-//      beanFactory.registerSingleton("play-injector", new SpringInjector(beanFactory))
+      beanFactory.registerSingleton("play-injector", new SpringInjector(beanFactory))
+      beanFactory.registerSingleton("configuration", configuration)
 
       modules.foreach {
         case playModule: Module => playModule.bindings(environment, configuration).foreach(b => bind(beanFactory, b))
@@ -71,7 +80,7 @@ class SpringApplicationLoader_draft extends ApplicationLoader {
         )
       }
 
-      ctx.refresh()
+//      ctx.refresh()
       ctx.start()
       ctx
     }
@@ -311,7 +320,7 @@ object QualifierChecker extends QualifierAnnotationAutowireCandidateResolver {
   }
 }
 
-class SpringInjectorDraft(factory: DefaultListableBeanFactory) extends Injector {
+class SpringInjector(factory: DefaultListableBeanFactory) extends Injector {
 
   private val bpp = new AutowiredAnnotationBeanPostProcessor()
   bpp.setBeanFactory(factory)

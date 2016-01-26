@@ -2,6 +2,6 @@ package service
 
 trait Service {
 
-  def create
+  def create()
 
 }
