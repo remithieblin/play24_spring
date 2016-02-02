@@ -5,10 +5,14 @@ import javax.inject.Inject
 import play.api.mvc._
 import service.MyService
 
-class MyController @Inject() (service: MyService) extends Controller {
+//@Inject() (service: MyService)
+class MyController  extends Controller {
 
   def get = Action { request =>
-    service.create
+//    service.create
+
+    println("lol controller")
+
     Ok
   }
 

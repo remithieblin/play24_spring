@@ -41,8 +41,9 @@ class SpringApplicationLoader_draft extends ApplicationLoader {
       val modules = new Module {
         def bindings(environment: Environment, configuration: Configuration) = Seq(
           BindingKey(classOf[GlobalSettings]) to global,
-//          BindingKey(classOf[Configuration]) to configuration,
+//          BindingKey(classOf[Environment]) to environment,
           BindingKey(classOf[OptionalSourceMapper]) to new OptionalSourceMapper(context.sourceMapper),
+//          BindingKey(classOf[GlobalPlugin]) to global,
           BindingKey(classOf[WebCommands]) to context.webCommands
         )} +: Modules.locate(env, configuration)
 
@@ -150,6 +151,7 @@ class SpringApplicationLoader_draft extends ApplicationLoader {
           // And then the provider bean gets used as the factory bean, calling its get method, for the actual bean
           beanDef.setFactoryBeanName(providerBeanName)
           beanDef.setFactoryMethodName("get")
+          beanDef.setBeanClass(binding.key.clazz)
 
         case Some(ProviderTarget(provider)) =>
 
