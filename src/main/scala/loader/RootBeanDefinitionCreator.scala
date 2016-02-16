@@ -7,7 +7,9 @@ import org.springframework.beans.factory.config.BeanDefinition
  *
  * If we were to subclass the bean factory, it wouldn't be needed, as it provides protected methods that could be used.
  */
-object RootBeanDefinitionCreator {
-
-  def create(bd: BeanDefinition): RootBeanDefinition = new RootBeanDefinition(bd)
-}
+//object RootBeanDefinitionCreator {
+//
+//  def create(bd: BeanDefinition): RootBeanDefinition = {
+//    new RootBeanDefinition(bd)
+//  }
+//}

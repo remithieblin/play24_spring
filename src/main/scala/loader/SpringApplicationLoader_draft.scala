@@ -1,23 +1,23 @@
 package loader
 
 import java.lang.annotation.Annotation
+import javax.inject.Provider
 
 import config.AppConfig
-import org.springframework.beans.TypeConverter
-import org.springframework.beans.factory.{NoUniqueBeanDefinitionException, NoSuchBeanDefinitionException, FactoryBean}
+import controllers.Assets
 import org.springframework.beans.factory.annotation.{AutowiredAnnotationBeanPostProcessor, QualifierAnnotationAutowireCandidateResolver}
-import org.springframework.beans.factory.config.{BeanDefinitionHolder, AutowireCapableBeanFactory, BeanDefinition, ConstructorArgumentValues}
+import org.springframework.beans.factory.config.{AutowireCapableBeanFactory, BeanDefinition, BeanDefinitionHolder, ConstructorArgumentValues}
 import org.springframework.beans.factory.support.{DefaultListableBeanFactory, GenericBeanDefinition, _}
+import org.springframework.beans.factory.{BeanCreationException, FactoryBean, NoSuchBeanDefinitionException, NoUniqueBeanDefinitionException}
+import org.springframework.beans.{MutablePropertyValues, BeanInstantiationException, TypeConverter}
 import org.springframework.context.ApplicationContext
 import org.springframework.context.annotation.AnnotationConfigApplicationContext
-import org.springframework.context.support.GenericApplicationContext
 import org.springframework.core.annotation.AnnotationUtils
 import play.api.ApplicationLoader.Context
 import play.api._
+import play.api.http.DefaultHttpErrorHandler
 import play.api.inject._
-import play.core.{DefaultWebCommands, WebCommands}
-
-import javax.inject.{Scope, Provider}
+import play.core.WebCommands
 
 import scala.collection.JavaConverters._
 import scala.reflect.ClassTag
@@ -41,9 +41,9 @@ class SpringApplicationLoader_draft extends ApplicationLoader {
       val modules = new Module {
         def bindings(environment: Environment, configuration: Configuration) = Seq(
           BindingKey(classOf[GlobalSettings]) to global,
-//          BindingKey(classOf[Environment]) to environment,
+          BindingKey(classOf[Environment]) to environment,
+          BindingKey(classOf[Configuration]) to configuration,
           BindingKey(classOf[OptionalSourceMapper]) to new OptionalSourceMapper(context.sourceMapper),
-//          BindingKey(classOf[GlobalPlugin]) to global,
           BindingKey(classOf[WebCommands]) to context.webCommands
         )} +: Modules.locate(env, configuration)
 
@@ -64,7 +64,10 @@ class SpringApplicationLoader_draft extends ApplicationLoader {
 
       // todo, use an xml or classpath scanning context or something not dumb
 //      val ctx = new GenericApplicationContext()
-      val ctx = new AnnotationConfigApplicationContext(classOf[AppConfig])
+      val ctx = new AnnotationConfigApplicationContext()
+
+      //, classOf[Assets], classOf[DefaultHttpErrorHandler]
+
       val beanFactory = ctx.getDefaultListableBeanFactory
       beanFactory.setAutowireCandidateResolver(new QualifierAnnotationAutowireCandidateResolver())
 
@@ -80,6 +83,9 @@ class SpringApplicationLoader_draft extends ApplicationLoader {
           s"Module [$unknown] is not a Play module or a Guice module"
         )
       }
+
+      ctx.register(classOf[AppConfig])
+      ctx.refresh()
 
 //      ctx.refresh()
       ctx.start()
@@ -151,7 +157,7 @@ class SpringApplicationLoader_draft extends ApplicationLoader {
           // And then the provider bean gets used as the factory bean, calling its get method, for the actual bean
           beanDef.setFactoryBeanName(providerBeanName)
           beanDef.setFactoryMethodName("get")
-          beanDef.setBeanClass(binding.key.clazz)
+//          beanDef.setBeanClass(binding.key.clazz)
 
         case Some(ProviderTarget(provider)) =>
 
@@ -322,6 +328,55 @@ object QualifierChecker extends QualifierAnnotationAutowireCandidateResolver {
   }
 }
 
+object RootBeanDefinitionCreator {
+
+  def create(bd: BeanDefinition): RootBeanDefinition = {
+    val rbd = new RootBeanDefinition()
+    rbd.setParentName(bd.getParentName)
+    rbd.setBeanClassName(bd.getBeanClassName)
+    rbd.setFactoryBeanName(bd.getFactoryBeanName)
+    rbd.setFactoryMethodName(bd.getFactoryMethodName)
+    rbd.setScope(bd.getScope)
+    rbd.setAbstract(bd.isAbstract)
+    rbd.setLazyInit(bd.isLazyInit)
+    rbd.setRole(bd.getRole)
+    rbd.setConstructorArgumentValues(new ConstructorArgumentValues(bd.getConstructorArgumentValues))
+    rbd.setPropertyValues(new MutablePropertyValues(bd.getPropertyValues))
+    rbd.setSource(bd.getSource)
+
+    val attributeNames = bd.attributeNames
+    for ( attributeName <- attributeNames) {
+      rbd.setAttribute(attributeName, bd.getAttribute(attributeName))
+    }
+
+    bd match {
+      case originalAbd: AbstractBeanDefinition =>
+        if (originalAbd.hasBeanClass) {
+          rbd.setBeanClass(originalAbd.getBeanClass)
+        }
+        rbd.setAutowireMode(originalAbd.getAutowireMode)
+        rbd.setDependencyCheck(originalAbd.getDependencyCheck)
+        rbd.setDependsOn(originalAbd.getDependsOn: _*)
+        rbd.setAutowireCandidate(originalAbd.isAutowireCandidate)
+        rbd.copyQualifiersFrom(originalAbd)
+        rbd.setPrimary(originalAbd.isPrimary)
+        rbd.setNonPublicAccessAllowed(originalAbd.isNonPublicAccessAllowed)
+        rbd.setLenientConstructorResolution(originalAbd.isLenientConstructorResolution)
+        rbd.setInitMethodName(originalAbd.getInitMethodName)
+        rbd.setEnforceInitMethod(originalAbd.isEnforceInitMethod)
+        rbd.setDestroyMethodName(originalAbd.getDestroyMethodName)
+        rbd.setEnforceDestroyMethod(originalAbd.isEnforceDestroyMethod)
+        rbd.setMethodOverrides(new MethodOverrides(originalAbd.getMethodOverrides))
+        rbd.setSynthetic(originalAbd.isSynthetic)
+        rbd.setResource(originalAbd.getResource)
+
+      case _ => rbd.setResourceDescription(bd.getResourceDescription)
+    }
+
+    rbd
+  }
+}
+
 class SpringInjector(factory: DefaultListableBeanFactory) extends Injector {
 
   private val bpp = new AutowiredAnnotationBeanPostProcessor()
@@ -331,30 +386,72 @@ class SpringInjector(factory: DefaultListableBeanFactory) extends Injector {
 
   def instanceOf[T](clazz: Class[T]) = {
     try {
-      factory.getBean(clazz)
+        factory.getBean(clazz)
     } catch {
+
       case e: NoSuchBeanDefinitionException =>
+
         // if the class is a concrete type, attempt to create a just in time binding
         if (!clazz.isInterface /* todo check if abstract, how? */) {
-          val beanDef = new GenericBeanDefinition()
-          beanDef.setScope(BeanDefinition.SCOPE_PROTOTYPE)
-          SpringApplicationLoader_draft.maybeSetScope(beanDef, clazz)
-          beanDef.setBeanClass(clazz)
-          beanDef.setPrimary(true)
-          beanDef.setAutowireMode(AutowireCapableBeanFactory.AUTOWIRE_AUTODETECT)
-          factory.registerBeanDefinition(clazz.getName, beanDef)
 
-//          Play.logger.debug("Attempting just in time bean registration for bean with class " + clazz)
-
-          val bean = factory.getBean(clazz)
-          // todo - this ensures fields get injected, see if there's a way that this can be done automatically
-          bpp.processInjection(bean)
-          bean
-
+          println("lol not interface, let's try")
+          tryCreate(clazz)
+          //
+          //          val beanDef = new GenericBeanDefinition()
+          //          beanDef.setScope(BeanDefinition.SCOPE_PROTOTYPE)
+          //          SpringApplicationLoader_draft.maybeSetScope(beanDef, clazz)
+          //          beanDef.setBeanClass(clazz)
+          //          beanDef.setPrimary(true)
+          //          beanDef.setAutowireMode(AutowireCapableBeanFactory.AUTOWIRE_AUTODETECT)
+          //          factory.registerBeanDefinition(clazz.getName, beanDef)
+          //
+          ////          Play.logger.debug("Attempting just in time bean registration for bean with class " + clazz)
+          //
+          //          val bean = factory.getBean(clazz)
+          //          // todo - this ensures fields get injected, see if there's a way that this can be done automatically
+          //          bpp.processInjection(bean)
+          //          bean
+//        }
         } else {
           throw e
         }
+
+      case e: BeanInstantiationException =>
+        println("lol BeanInstantiationException")
+        throw e
+
+      case e: BeanCreationException =>
+        println("lol BeanCreationException")
+//        if (!clazz.isInterface /* todo check if abstract, how? */) {
+//          tryCreate(clazz)
+//        } else
+        throw e
+
+      case e: Exception => throw e
     }
+  }
+
+  def tryCreate[T](clazz: Class[T]) = {
+    val beanDef = new GenericBeanDefinition()
+    beanDef.setScope(BeanDefinition.SCOPE_PROTOTYPE)
+    SpringApplicationLoader_draft.maybeSetScope(beanDef, clazz)
+    beanDef.setBeanClass(clazz)
+    beanDef.setPrimary(true)
+    beanDef.setAutowireMode(AutowireCapableBeanFactory.AUTOWIRE_AUTODETECT)
+    factory.registerBeanDefinition(clazz.toString, beanDef)
+    factory.clearMetadataCache()
+//    factory.registerBeanDefinition(clazz.getName, beanDef)
+
+    //          Play.logger.debug("Attempting just in time bean registration for bean with class " + clazz)
+
+//    val bean = factory.getBean(clazz)
+
+    val bean = instanceOf(clazz)
+
+
+    // todo - this ensures fields get injected, see if there's a way that this can be done automatically
+    bpp.processInjection(bean)
+    bean
   }
 
   override def instanceOf[T](key: BindingKey[T]): T = {
