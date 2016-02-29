@@ -41,8 +41,8 @@ class SpringApplicationLoader_draft extends ApplicationLoader {
       val modules = new Module {
         def bindings(environment: Environment, configuration: Configuration) = Seq(
           BindingKey(classOf[GlobalSettings]) to global,
-          BindingKey(classOf[Environment]) to environment,
-          BindingKey(classOf[Configuration]) to configuration,
+//          BindingKey(classOf[Environment]) to environment,
+//          BindingKey(classOf[Configuration]) to configuration,
           BindingKey(classOf[OptionalSourceMapper]) to new OptionalSourceMapper(context.sourceMapper),
           BindingKey(classOf[WebCommands]) to context.webCommands
         )} +: Modules.locate(env, configuration)
@@ -74,7 +74,7 @@ class SpringApplicationLoader_draft extends ApplicationLoader {
 
       // Register the Spring injector as a singleton first
       beanFactory.registerSingleton("play-injector", new SpringInjector(beanFactory))
-      beanFactory.registerSingleton("configuration", configuration)
+//      beanFactory.registerSingleton("configuration", configuration)
 
       modules.foreach {
         case playModule: Module => playModule.bindings(environment, configuration).foreach(b => bind(beanFactory, b))
@@ -85,9 +85,9 @@ class SpringApplicationLoader_draft extends ApplicationLoader {
       }
 
       ctx.register(classOf[AppConfig])
+//      ctx.scan("provider", "router", "play", "controllers")
       ctx.refresh()
 
-//      ctx.refresh()
       ctx.start()
       ctx
     }
@@ -110,7 +110,11 @@ class SpringApplicationLoader_draft extends ApplicationLoader {
       val beanDef = new GenericBeanDefinition()
 
       // todo - come up with a better name
-      val beanName = binding.key.toString()
+      var beanName = binding.key.toString()
+
+//      if(beanName.endsWith("Provider"))
+//        beanName = beanName.replace("Provider", "-provider");
+
 
       // Add qualifier if it exists
       binding.key.qualifier match {
@@ -145,14 +149,18 @@ class SpringApplicationLoader_draft extends ApplicationLoader {
 
         case Some(ProviderConstructionTarget(providerClass)) =>
 
-          // The provider itself becomes a bean that gets autowired
-          val providerBeanDef = new GenericBeanDefinition()
-          providerBeanDef.setBeanClass(providerClass)
-          providerBeanDef.setAutowireMode(AutowireCapableBeanFactory.AUTOWIRE_CONSTRUCTOR)
-          providerBeanDef.setScope(BeanDefinition.SCOPE_SINGLETON)
-          providerBeanDef.setAutowireCandidate(false)
-          val providerBeanName = beanName + "-provider"
-          beanFactory.registerBeanDefinition(providerBeanName, providerBeanDef)
+          val providerBeanName = providerClass.toString
+//          val providerBeanName = beanName + "-provider"
+          if (!beanFactory.containsBeanDefinition(providerBeanName)) {
+
+            // The provider itself becomes a bean that gets autowired
+            val providerBeanDef = new GenericBeanDefinition()
+            providerBeanDef.setBeanClass(providerClass)
+            providerBeanDef.setAutowireMode(AutowireCapableBeanFactory.AUTOWIRE_CONSTRUCTOR)
+            providerBeanDef.setScope(BeanDefinition.SCOPE_SINGLETON)
+            providerBeanDef.setAutowireCandidate(false)
+            beanFactory.registerBeanDefinition(providerBeanName, providerBeanDef)
+          }
 
           // And then the provider bean gets used as the factory bean, calling its get method, for the actual bean
           beanDef.setFactoryBeanName(providerBeanName)
@@ -385,33 +393,19 @@ class SpringInjector(factory: DefaultListableBeanFactory) extends Injector {
   def instanceOf[T](implicit ct: ClassTag[T]) = instanceOf(ct.runtimeClass).asInstanceOf[T]
 
   def instanceOf[T](clazz: Class[T]) = {
+    getBean(clazz)
+  }
+
+  def getBean[T](clazz: Class[T]): T = {
     try {
-        factory.getBean(clazz)
+      factory.getBean(clazz)
     } catch {
 
       case e: NoSuchBeanDefinitionException =>
-
         // if the class is a concrete type, attempt to create a just in time binding
         if (!clazz.isInterface /* todo check if abstract, how? */) {
-
           println("lol not interface, let's try")
           tryCreate(clazz)
-          //
-          //          val beanDef = new GenericBeanDefinition()
-          //          beanDef.setScope(BeanDefinition.SCOPE_PROTOTYPE)
-          //          SpringApplicationLoader_draft.maybeSetScope(beanDef, clazz)
-          //          beanDef.setBeanClass(clazz)
-          //          beanDef.setPrimary(true)
-          //          beanDef.setAutowireMode(AutowireCapableBeanFactory.AUTOWIRE_AUTODETECT)
-          //          factory.registerBeanDefinition(clazz.getName, beanDef)
-          //
-          ////          Play.logger.debug("Attempting just in time bean registration for bean with class " + clazz)
-          //
-          //          val bean = factory.getBean(clazz)
-          //          // todo - this ensures fields get injected, see if there's a way that this can be done automatically
-          //          bpp.processInjection(bean)
-          //          bean
-//        }
         } else {
           throw e
         }
@@ -422,13 +416,15 @@ class SpringInjector(factory: DefaultListableBeanFactory) extends Injector {
 
       case e: BeanCreationException =>
         println("lol BeanCreationException")
-//        if (!clazz.isInterface /* todo check if abstract, how? */) {
-//          tryCreate(clazz)
-//        } else
         throw e
 
       case e: Exception => throw e
     }
+  }
+
+  override def instanceOf[T](key: BindingKey[T]): T = {
+//    throw new Exception("not implemented yet.")
+    getBean(key.clazz)
   }
 
   def tryCreate[T](clazz: Class[T]) = {
@@ -440,21 +436,11 @@ class SpringInjector(factory: DefaultListableBeanFactory) extends Injector {
     beanDef.setAutowireMode(AutowireCapableBeanFactory.AUTOWIRE_AUTODETECT)
     factory.registerBeanDefinition(clazz.toString, beanDef)
     factory.clearMetadataCache()
-//    factory.registerBeanDefinition(clazz.getName, beanDef)
-
-    //          Play.logger.debug("Attempting just in time bean registration for bean with class " + clazz)
-
-//    val bean = factory.getBean(clazz)
 
     val bean = instanceOf(clazz)
-
 
     // todo - this ensures fields get injected, see if there's a way that this can be done automatically
     bpp.processInjection(bean)
     bean
-  }
-
-  override def instanceOf[T](key: BindingKey[T]): T = {
-    throw new Exception("not implemented yet.")
   }
 }
