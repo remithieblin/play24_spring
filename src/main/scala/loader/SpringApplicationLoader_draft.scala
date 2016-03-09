@@ -41,8 +41,6 @@ class SpringApplicationLoader_draft extends ApplicationLoader {
       val modules = new Module {
         def bindings(environment: Environment, configuration: Configuration) = Seq(
           BindingKey(classOf[GlobalSettings]) to global,
-//          BindingKey(classOf[Environment]) to environment,
-//          BindingKey(classOf[Configuration]) to configuration,
           BindingKey(classOf[OptionalSourceMapper]) to new OptionalSourceMapper(context.sourceMapper),
           BindingKey(classOf[WebCommands]) to context.webCommands
         )} +: Modules.locate(env, configuration)
@@ -69,12 +67,12 @@ class SpringApplicationLoader_draft extends ApplicationLoader {
       //, classOf[Assets], classOf[DefaultHttpErrorHandler]
 
       val beanFactory = ctx.getDefaultListableBeanFactory
+
       beanFactory.setAutowireCandidateResolver(new QualifierAnnotationAutowireCandidateResolver())
 
 
       // Register the Spring injector as a singleton first
       beanFactory.registerSingleton("play-injector", new SpringInjector(beanFactory))
-//      beanFactory.registerSingleton("configuration", configuration)
 
       modules.foreach {
         case playModule: Module => playModule.bindings(environment, configuration).foreach(b => bind(beanFactory, b))
@@ -110,11 +108,7 @@ class SpringApplicationLoader_draft extends ApplicationLoader {
       val beanDef = new GenericBeanDefinition()
 
       // todo - come up with a better name
-      var beanName = binding.key.toString()
-
-//      if(beanName.endsWith("Provider"))
-//        beanName = beanName.replace("Provider", "-provider");
-
+      val beanName = binding.key.toString()
 
       // Add qualifier if it exists
       binding.key.qualifier match {
@@ -137,8 +131,12 @@ class SpringApplicationLoader_draft extends ApplicationLoader {
       binding.target match {
         case None =>
           // Bound to itself, set the key class as the bean class
-          beanDef.setBeanClass(binding.key.clazz)
-          SpringApplicationLoader_draft.maybeSetScope(beanDef, binding.key.clazz)
+
+          // not registered in GuiceableModuleConversions.def guice(bindings: Seq[PlayBinding[_]]): GuiceModule = {..}:
+          //binding.target.foreach {..} => target = None will be ignored, which is the case when binding to self
+
+//          beanDef.setBeanClass(binding.key.clazz)
+//          SpringApplicationLoader_draft.maybeSetScope(beanDef, binding.key.clazz)
 
         case Some(ConstructionTarget(clazz)) =>
           // Bound to an implementation, set the impl class as the bean class.
@@ -165,6 +163,7 @@ class SpringApplicationLoader_draft extends ApplicationLoader {
           // And then the provider bean gets used as the factory bean, calling its get method, for the actual bean
           beanDef.setFactoryBeanName(providerBeanName)
           beanDef.setFactoryMethodName("get")
+          beanDef.setPrimary(false)
 //          beanDef.setBeanClass(binding.key.clazz)
 
         case Some(ProviderTarget(provider)) =>
