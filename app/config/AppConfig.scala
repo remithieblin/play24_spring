@@ -9,7 +9,7 @@ import play.api.routing.Router
 import play.api._
 
 @Configuration
-@ComponentScan(Array("provider", "router", "play", "controllers"))
+@ComponentScan(Array("provider", "service", "router", "play", "controllers"))
 class AppConfig  {
 
 //  println("lol AppConfig")

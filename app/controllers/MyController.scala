@@ -1,16 +1,16 @@
 package controllers
 
-import javax.inject.{Named, Inject}
+import javax.inject.{Inject, Named}
 
 import play.api.mvc._
-import service.MyService
+import service.Service
 
-//@Inject() (service: MyService)
+
 @Named
-class MyController  extends Controller {
+class MyController @Inject() (service: Service) extends Controller {
 
   def get = Action { request =>
-//    service.create
+    service.create()
 
     println("lol controller")
 
