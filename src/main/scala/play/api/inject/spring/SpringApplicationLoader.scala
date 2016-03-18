@@ -24,73 +24,98 @@ import scala.reflect.ClassTag
  * based on the awesome work of jroper:
  * https://github.com/jroper/play-spring
  */
-class SpringApplicationLoader extends ApplicationLoader {
-    def load(context: Context) = {
-      val env = context.environment
+class SpringApplicationLoader(protected val initialBuilder: SpringApplicationBuilder) extends ApplicationLoader {
+
+  // empty constructor needed for instantiating via reflection
+  def this() = this(new SpringApplicationBuilder)
+
+  def load(context: Context) = {
+    val env = context.environment
 
 
-      val configuration = context.initialConfiguration
-      // Create the global first
-      val global = GlobalSettings(context.initialConfiguration, env)
+    //      val configuration = context.initialConfiguration
+    // Create the global first
+    val global = GlobalSettings(context.initialConfiguration, env)
 
-      // Create the final configuration
-      // todo - abstract this logic out into something pluggable, with the default delegating to global
-//      val configuration = global.onLoadConfig(context.initialConfiguration, env.rootPath, env.classLoader, env.mode)
+    // Create the final configuration
+    // todo - abstract this logic out into something pluggable, with the default delegating to global
+    val configuration = global.onLoadConfig(context.initialConfiguration, env.rootPath, env.classLoader, env.mode)
 
-//      Logger.configure(env.rootPath, configuration, env.mode)
+    //      Logger.configure(env.rootPath, configuration, env.mode)
 
-      // Load modules and include some of the core bindings
-      val modules = new Module {
-        def bindings(environment: Environment, configuration: Configuration) = Seq(
-          BindingKey(classOf[GlobalSettings]) to global,
-          BindingKey(classOf[OptionalSourceMapper]) to new OptionalSourceMapper(context.sourceMapper),
-          BindingKey(classOf[WebCommands]) to context.webCommands
-        )} +: Modules.locate(env, configuration)
+    // Load modules and include some of the core bindings
+    val modules = new Module {
+      def bindings(environment: Environment, configuration: Configuration) = Seq(
+        BindingKey(classOf[GlobalSettings]) to global,
+        BindingKey(classOf[OptionalSourceMapper]) to new OptionalSourceMapper(context.sourceMapper),
+        BindingKey(classOf[WebCommands]) to context.webCommands
+      )} +: Modules.locate(env, configuration)
 
-      val ctx = createApplicationContext(env, configuration, modules)
-      ctx.getBean(classOf[Application])
+    val ctx = createApplicationContext(env, configuration, modules)
+    ctx.getBean(classOf[Application])
+  }
+
+
+
+  /**
+   * Construct a builder to use for loading the given context.
+   */
+  protected def builder(context: ApplicationLoader.Context): SpringApplicationBuilder = {
+    initialBuilder
+      .in(context.environment)
+      .loadConfig(context.initialConfiguration)
+      .overrides(overrides(context): Seq[Binding[_]])
+  }
+
+  /**
+   * Override some bindings using information from the context. The default
+   * implementation of this method provides bindings that most applications
+   * should include.
+   */
+  protected def overrides(context: ApplicationLoader.Context): Seq[Binding[_]] = {
+    SpringApplicationLoader.defaultOverrides(context)
+  }
+
+  //    override def createInjector(environment: Environment, configuration: Configuration, modules: Seq[Any]): Option[Injector] = {
+  //      Some(createApplicationContext(environment, configuration, modules).getBean(classOf[Injector]))
+  //    }
+
+
+
+  /**
+   * Creates an application context for the given modules
+   */
+  private def createApplicationContext(environment: Environment, configuration: Configuration, modules: Seq[Any]): ApplicationContext = {
+
+    // todo, use an xml or classpath scanning context or something not dumb
+    //      val ctx = new GenericApplicationContext()
+    val ctx = new AnnotationConfigApplicationContext()
+
+    //, classOf[Assets], classOf[DefaultHttpErrorHandler]
+
+    val beanFactory = ctx.getDefaultListableBeanFactory
+
+    beanFactory.setAutowireCandidateResolver(new QualifierAnnotationAutowireCandidateResolver())
+
+
+    // Register the Spring injector as a singleton first
+    beanFactory.registerSingleton("play-injector", new SpringInjector(beanFactory))
+
+    modules.foreach {
+      case playModule: Module => playModule.bindings(environment, configuration).foreach(b => bind(beanFactory, b))
+      case unknown => throw new PlayException(
+        "Unknown module type",
+        s"Module [$unknown] is not a Play module or a Guice module"
+      )
     }
 
-//    override def createInjector(environment: Environment, configuration: Configuration, modules: Seq[Any]): Option[Injector] = {
-//      Some(createApplicationContext(environment, configuration, modules).getBean(classOf[Injector]))
-//    }
+    ctx.register(classOf[AppConfig])
+    //      ctx.scan("provider", "router", "play", "controllers")
+    ctx.refresh()
 
-
-
-    /**
-     * Creates an application context for the given modules
-     */
-    private def createApplicationContext(environment: Environment, configuration: Configuration, modules: Seq[Any]): ApplicationContext = {
-
-      // todo, use an xml or classpath scanning context or something not dumb
-//      val ctx = new GenericApplicationContext()
-      val ctx = new AnnotationConfigApplicationContext()
-
-      //, classOf[Assets], classOf[DefaultHttpErrorHandler]
-
-      val beanFactory = ctx.getDefaultListableBeanFactory
-
-      beanFactory.setAutowireCandidateResolver(new QualifierAnnotationAutowireCandidateResolver())
-
-
-      // Register the Spring injector as a singleton first
-      beanFactory.registerSingleton("play-injector", new SpringInjector(beanFactory))
-
-      modules.foreach {
-        case playModule: Module => playModule.bindings(environment, configuration).foreach(b => bind(beanFactory, b))
-        case unknown => throw new PlayException(
-          "Unknown module type",
-          s"Module [$unknown] is not a Play module or a Guice module"
-        )
-      }
-
-      ctx.register(classOf[AppConfig])
-//      ctx.scan("provider", "router", "play", "controllers")
-      ctx.refresh()
-
-      ctx.start()
-      ctx
-    }
+    ctx.start()
+    ctx
+  }
 
   /**
    * Perhaps this method should be moved into a custom bean definition reader - eg a PlayModuleBeanDefinitionReader.
@@ -132,13 +157,13 @@ class SpringApplicationLoader extends ApplicationLoader {
 
       binding.target match {
         case None =>
-          // Bound to itself, set the key class as the bean class
+        // Bound to itself, set the key class as the bean class
 
-          // not registered in GuiceableModuleConversions.def guice(bindings: Seq[PlayBinding[_]]): GuiceModule = {..}:
-          //binding.target.foreach {..} => target = None will be ignored, which is the case when binding to self
+        // not registered in GuiceableModuleConversions: def guice(bindings: Seq[PlayBinding[_]]): GuiceModule = {..}:
+        //binding.target.foreach {..} => target = None will be ignored, which is the case when binding to self
 
-//          beanDef.setBeanClass(binding.key.clazz)
-//          SpringApplicationLoader_draft.maybeSetScope(beanDef, binding.key.clazz)
+        //          beanDef.setBeanClass(binding.key.clazz)
+        //          SpringApplicationLoader_draft.maybeSetScope(beanDef, binding.key.clazz)
 
         case Some(ConstructionTarget(clazz)) =>
           // Bound to an implementation, set the impl class as the bean class.
@@ -150,7 +175,7 @@ class SpringApplicationLoader extends ApplicationLoader {
         case Some(ProviderConstructionTarget(providerClass)) =>
 
           val providerBeanName = providerClass.toString
-//          val providerBeanName = beanName + "-provider"
+          //          val providerBeanName = beanName + "-provider"
           if (!beanFactory.containsBeanDefinition(providerBeanName)) {
 
             // The provider itself becomes a bean that gets autowired
@@ -166,7 +191,7 @@ class SpringApplicationLoader extends ApplicationLoader {
           beanDef.setFactoryBeanName(providerBeanName)
           beanDef.setFactoryMethodName("get")
           beanDef.setPrimary(false)
-//          beanDef.setBeanClass(binding.key.clazz)
+        //          beanDef.setBeanClass(binding.key.clazz)
 
         case Some(ProviderTarget(provider)) =>
 
@@ -238,6 +263,16 @@ private object SpringApplicationLoader {
       case other =>
       // todo: use Jsr330ScopeMetaDataResolver to resolve and set scope
     }
+  }
+
+  /**
+   * The default overrides provided by the Scala and Java GuiceApplicationLoaders.
+   */
+  def defaultOverrides(context: ApplicationLoader.Context) = {
+    val seq: Seq[Binding[_]] = Seq(
+      bind[OptionalSourceMapper] to new OptionalSourceMapper(context.sourceMapper),
+      bind[WebCommands] to context.webCommands)
+    seq
   }
 
 }
