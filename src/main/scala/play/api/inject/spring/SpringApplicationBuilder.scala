@@ -1,8 +1,8 @@
 package play.api.inject.spring
 
+import play.api.inject.{Injector => PlayInjector, _}
 import play.api.routing.Router
 import play.api.{ Application, Configuration, Environment, GlobalSettings, Logger, OptionalSourceMapper }
-import play.api.inject.{ Injector => PlayInjector, RoutesProvider, bind }
 import play.core.{ DefaultWebCommands, WebCommands }
 
 /**
@@ -16,7 +16,8 @@ class SpringApplicationBuilder (
                                  disabled: Seq[Class[_]] = Seq.empty,
                                  eagerly: Boolean = false,
                                  loadConfiguration: Environment => Configuration = Configuration.load,
-                                 global: Option[GlobalSettings] = None
+                                 global: Option[GlobalSettings] = None,
+                                 loadModules: (Environment, Configuration) => Seq[_] = (env, conf) => Modules.locate(env, conf)
                                  )  extends SpringBuilder[SpringApplicationBuilder](
   environment, configuration, modules, overrides, disabled, eagerly
 ) {
@@ -49,6 +50,38 @@ class SpringApplicationBuilder (
    */
   def loadConfig(conf: Configuration): SpringApplicationBuilder =
     loadConfig(env => conf)
+
+  /**
+   * Create a new Play Application using this configured builder.
+   */
+  def build(): Application = injector().instanceOf[Application]
+
+  /**
+   * Create a new Play application Module for an Application using this configured builder.
+   */
+  override def applicationModule(): Seq[Module] = {
+    val initialConfiguration = loadConfiguration(environment)
+    val appConfiguration = initialConfiguration ++ configuration
+    val globalSettings = global.getOrElse(GlobalSettings(appConfiguration, environment))
+
+    // TODO: Logger should be application specific, and available via dependency injection.
+    //       Creating multiple applications will stomp on the global logger configuration.
+    Logger.configure(environment)
+
+    if (appConfiguration.underlying.hasPath("logger")) {
+      Logger.warn("Logger configuration in conf files is deprecated and has no effect. Use a logback configuration file instead.")
+    }
+
+    val loadedModules = loadModules(environment, appConfiguration)
+
+    copy(configuration = appConfiguration)
+      .bindings(loadedModules: _*)
+      .bindings(
+        bind[GlobalSettings] to globalSettings,
+        bind[OptionalSourceMapper] to new OptionalSourceMapper(None),
+        bind[WebCommands] to new DefaultWebCommands
+      ).createModule
+  }
 
   /**
    * Internal copy method with defaults.

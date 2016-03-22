@@ -30,29 +30,33 @@ class SpringApplicationLoader(protected val initialBuilder: SpringApplicationBui
   def this() = this(new SpringApplicationBuilder)
 
   def load(context: Context) = {
-    val env = context.environment
 
+    builder(context).build()
 
-    //      val configuration = context.initialConfiguration
-    // Create the global first
-    val global = GlobalSettings(context.initialConfiguration, env)
-
-    // Create the final configuration
-    // todo - abstract this logic out into something pluggable, with the default delegating to global
-    val configuration = global.onLoadConfig(context.initialConfiguration, env.rootPath, env.classLoader, env.mode)
-
-    //      Logger.configure(env.rootPath, configuration, env.mode)
-
-    // Load modules and include some of the core bindings
-    val modules = new Module {
-      def bindings(environment: Environment, configuration: Configuration) = Seq(
-        BindingKey(classOf[GlobalSettings]) to global,
-        BindingKey(classOf[OptionalSourceMapper]) to new OptionalSourceMapper(context.sourceMapper),
-        BindingKey(classOf[WebCommands]) to context.webCommands
-      )} +: Modules.locate(env, configuration)
-
-    val ctx = createApplicationContext(env, configuration, modules)
-    ctx.getBean(classOf[Application])
+//    val env = context.environment
+//
+//
+//    //      val configuration = context.initialConfiguration
+//    // Create the global first
+//    val global = GlobalSettings(context.initialConfiguration, env)
+////    BindingKey(classOf[GlobalSettings]) to global,
+//
+//    // Create the final configuration
+//    // todo - abstract this logic out into something pluggable, with the default delegating to global
+//    val configuration = global.onLoadConfig(context.initialConfiguration, env.rootPath, env.classLoader, env.mode)
+//
+//    //      Logger.configure(env.rootPath, configuration, env.mode)
+//
+//    // Load modules and include some of the core bindings
+//    val modules = new Module {
+//      def bindings(environment: Environment, configuration: Configuration) = Seq(
+//        BindingKey(classOf[GlobalSettings]) to global,
+//        BindingKey(classOf[OptionalSourceMapper]) to new OptionalSourceMapper(context.sourceMapper),
+//        BindingKey(classOf[WebCommands]) to context.webCommands
+//      )} +: Modules.locate(env, configuration)
+//
+//    val ctx = createApplicationContext(env, configuration, modules)
+//    ctx.getBean(classOf[Application])
   }
 
 
@@ -64,7 +68,7 @@ class SpringApplicationLoader(protected val initialBuilder: SpringApplicationBui
     initialBuilder
       .in(context.environment)
       .loadConfig(context.initialConfiguration)
-      .overrides(overrides(context): Seq[Binding[_]])
+      .overrides(overrides(context): Seq[_])
   }
 
   /**
@@ -72,7 +76,7 @@ class SpringApplicationLoader(protected val initialBuilder: SpringApplicationBui
    * implementation of this method provides bindings that most applications
    * should include.
    */
-  protected def overrides(context: ApplicationLoader.Context): Seq[Binding[_]] = {
+  protected def overrides(context: ApplicationLoader.Context): Seq[_] = {
     SpringApplicationLoader.defaultOverrides(context)
   }
 
@@ -269,7 +273,10 @@ private object SpringApplicationLoader {
    * The default overrides provided by the Scala and Java GuiceApplicationLoaders.
    */
   def defaultOverrides(context: ApplicationLoader.Context) = {
-    val seq: Seq[Binding[_]] = Seq(
+//    val global = GlobalSettings(context.initialConfiguration, context.environment)
+
+    val seq: Seq[_] = Seq(
+//      BindingKey(classOf[GlobalSettings]) to global,
       bind[OptionalSourceMapper] to new OptionalSourceMapper(context.sourceMapper),
       bind[WebCommands] to context.webCommands)
     seq
