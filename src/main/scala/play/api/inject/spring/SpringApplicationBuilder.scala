@@ -11,13 +11,14 @@ import play.core.{ DefaultWebCommands, WebCommands }
 class SpringApplicationBuilder (
                                  environment: Environment = Environment.simple(),
                                  configuration: Configuration = Configuration.empty,
-                                 modules: Seq[_] = Seq.empty,
+                                 modules: Seq[Module] = Seq.empty,
                                  overrides: Seq[_] = Seq.empty,
                                  disabled: Seq[Class[_]] = Seq.empty,
                                  eagerly: Boolean = false,
                                  loadConfiguration: Environment => Configuration = Configuration.load,
                                  global: Option[GlobalSettings] = None,
-                                 loadModules: (Environment, Configuration) => Seq[_] = (env, conf) => Modules.locate(env, conf)
+                                 loadModules: (Environment, Configuration) => Seq[Module] =
+                                 (env, conf) => SpringableModule.loadModules(env, conf)
                                  )  extends SpringBuilder[SpringApplicationBuilder](
   environment, configuration, modules, overrides, disabled, eagerly
 ) {
@@ -31,7 +32,7 @@ class SpringApplicationBuilder (
    */
   override protected def newBuilder(environment: Environment,
                                     configuration: Configuration,
-                                    modules: Seq[_], overrides: Seq[_],
+                                    modules: Seq[Module], overrides: Seq[_],
                                     disabled: Seq[Class[_]],
                                     eagerly: Boolean): SpringApplicationBuilder = {
     copy(environment, configuration, modules, overrides, disabled, eagerly)
@@ -75,12 +76,16 @@ class SpringApplicationBuilder (
     val loadedModules = loadModules(environment, appConfiguration)
 
     copy(configuration = appConfiguration)
-      .bindings(loadedModules: _*)
+      .bindings(loadedModules: Seq[Module])
       .bindings(
-        bind[GlobalSettings] to globalSettings,
-        bind[OptionalSourceMapper] to new OptionalSourceMapper(None),
-        bind[WebCommands] to new DefaultWebCommands
-      ).createModule
+        Seq(new Module{
+          def bindings(environment: Environment, configuration: Configuration) = Seq(
+            bind[GlobalSettings] to globalSettings,
+            bind[OptionalSourceMapper] to new OptionalSourceMapper(None),
+            bind[WebCommands] to new DefaultWebCommands
+          )
+        })
+      ).createModule()
   }
 
   /**
@@ -89,7 +94,7 @@ class SpringApplicationBuilder (
   private def copy(
                     environment: Environment = environment,
                     configuration: Configuration = configuration,
-                    modules: Seq[_] = modules,
+                    modules: Seq[Module] = modules,
                     overrides: Seq[_] = overrides,
                     disabled: Seq[Class[_]] = disabled,
                     eagerly: Boolean = eagerly,

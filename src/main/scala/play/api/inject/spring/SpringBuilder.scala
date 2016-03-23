@@ -22,7 +22,7 @@ import scala.reflect.ClassTag
 abstract class SpringBuilder[Self] protected (
     environment: Environment,
     configuration: Configuration,
-    modules: Seq[_],
+    modules: Seq[Module],
     overrides: Seq[_],
     disabled: Seq[Class[_]],
     eagerly: Boolean) {
@@ -78,7 +78,7 @@ abstract class SpringBuilder[Self] protected (
   /**
    * Add Guice modules, Play modules, or Play bindings.
    */
-  final def bindings(bindModules: _*): Self =
+  final def bindings(bindModules: Seq[Module]): Self =
     copyBuilder(modules = modules ++ bindModules)
 
   /**
@@ -94,7 +94,7 @@ abstract class SpringBuilder[Self] protected (
     copyBuilder(overrides = overrides ++ overrideModules)
 
 
-  def applicationModule(): Seq[Module] = createModule()
+  def applicationModule(): Seq[_] = createModule()
 
   /**
    * Creation of the Guice Module used by the injector.
@@ -113,10 +113,11 @@ abstract class SpringBuilder[Self] protected (
         BindingKey(implicitly[ClassTag[play.inject.Injector]].runtimeClass.asInstanceOf[Class[play.inject.Injector]])
           .to[play.inject.DelegateInjector]
     )}
-    val enabledModules = modules.map(disable(disabled))
-    val bindingModules = enabledModules :+ injectorModule
-    val overrideModules = bindingModules.map(overrideModule(overrides))
-    overrideModules
+//    val enabledModules = modules.map(disable(disabled))
+//    val bindingModules = enabledModules :+ injectorModule
+//    val overrideModules = bindingModules.map(overrideModule(overrides))
+//    overrideModules
+    modules :+ injectorModule
   }
 
 
@@ -284,7 +285,7 @@ abstract class SpringBuilder[Self] protected (
   private def copyBuilder(
     environment: Environment = environment,
     configuration: Configuration = configuration,
-    modules: Seq[_] = modules,
+    modules: Seq[Module] = modules,
     overrides: Seq[_] = overrides,
     disabled: Seq[Class[_]] = disabled,
     eagerly: Boolean = eagerly): Self =
@@ -297,7 +298,7 @@ abstract class SpringBuilder[Self] protected (
   protected def newBuilder(
     environment: Environment,
     configuration: Configuration,
-    modules: Seq[_],
+    modules: Seq[Module],
     overrides: Seq[_],
     disabled: Seq[Class[_]],
     eagerly: Boolean): Self
