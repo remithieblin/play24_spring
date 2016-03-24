@@ -19,6 +19,7 @@ object SpringableModule {
    */
   def springable(module: Any): Module = module match {
     case playModule: Module => playModule
+//    case bin
     case unknown => throw new PlayException(
       "Unknown module type",
       s"Module [$unknown] is not a Play module"

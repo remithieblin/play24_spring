@@ -12,7 +12,7 @@ class SpringApplicationBuilder (
                                  environment: Environment = Environment.simple(),
                                  configuration: Configuration = Configuration.empty,
                                  modules: Seq[Module] = Seq.empty,
-                                 overrides: Seq[_] = Seq.empty,
+                                 overrides: Seq[Module] = Seq.empty,
                                  disabled: Seq[Class[_]] = Seq.empty,
                                  eagerly: Boolean = false,
                                  loadConfiguration: Environment => Configuration = Configuration.load,
@@ -32,7 +32,7 @@ class SpringApplicationBuilder (
    */
   override protected def newBuilder(environment: Environment,
                                     configuration: Configuration,
-                                    modules: Seq[Module], overrides: Seq[_],
+                                    modules: Seq[Module], overrides: Seq[Module],
                                     disabled: Seq[Class[_]],
                                     eagerly: Boolean): SpringApplicationBuilder = {
     copy(environment, configuration, modules, overrides, disabled, eagerly)
@@ -95,7 +95,7 @@ class SpringApplicationBuilder (
                     environment: Environment = environment,
                     configuration: Configuration = configuration,
                     modules: Seq[Module] = modules,
-                    overrides: Seq[_] = overrides,
+                    overrides: Seq[Module] = overrides,
                     disabled: Seq[Class[_]] = disabled,
                     eagerly: Boolean = eagerly,
                     loadConfiguration: Environment => Configuration = loadConfiguration,

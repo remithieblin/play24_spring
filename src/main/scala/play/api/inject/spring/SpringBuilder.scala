@@ -23,7 +23,7 @@ abstract class SpringBuilder[Self] protected (
     environment: Environment,
     configuration: Configuration,
     modules: Seq[Module],
-    overrides: Seq[_],
+    overrides: Seq[Module],
     disabled: Seq[Class[_]],
     eagerly: Boolean) {
 
@@ -90,7 +90,7 @@ abstract class SpringBuilder[Self] protected (
   /**
    * Override bindings using Spring modules, Play modules, or Play bindings.
    */
-  final def overrides(overrideModules: Seq[_]): Self =
+  final def overrides(overrideModules: Seq[Module]): Self =
     copyBuilder(overrides = overrides ++ overrideModules)
 
 
@@ -113,12 +113,14 @@ abstract class SpringBuilder[Self] protected (
         BindingKey(implicitly[ClassTag[play.inject.Injector]].runtimeClass.asInstanceOf[Class[play.inject.Injector]])
           .to[play.inject.DelegateInjector]
     )}
-//    val enabledModules = modules.map(disable(disabled))
-//    val bindingModules = enabledModules :+ injectorModule
-//    val overrideModules = bindingModules.map(overrideModule(overrides))
-//    overrideModules
-    modules :+ injectorModule
+    val enabledModules: Seq[Module] = filterOut(disabled, modules)
+    val bindingModules: Seq[Module] = enabledModules :+ injectorModule
+    val springableOverrides: Seq[Module] = overrides.map(SpringableModule.springable)
+    bindingModules ++ springableOverrides
   }
+
+  private def filterOut[A](classes: Seq[Class[_]], instances: Seq[A]): Seq[A] =
+    instances.filterNot(o => classes.exists(_.isAssignableFrom(o.getClass)))
 
 
   /**
@@ -286,7 +288,7 @@ abstract class SpringBuilder[Self] protected (
     environment: Environment = environment,
     configuration: Configuration = configuration,
     modules: Seq[Module] = modules,
-    overrides: Seq[_] = overrides,
+    overrides: Seq[Module] = overrides,
     disabled: Seq[Class[_]] = disabled,
     eagerly: Boolean = eagerly): Self =
     newBuilder(environment, configuration, modules, overrides, disabled, eagerly)
@@ -299,7 +301,7 @@ abstract class SpringBuilder[Self] protected (
     environment: Environment,
     configuration: Configuration,
     modules: Seq[Module],
-    overrides: Seq[_],
+    overrides: Seq[Module],
     disabled: Seq[Class[_]],
     eagerly: Boolean): Self
 

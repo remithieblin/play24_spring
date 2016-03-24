@@ -68,7 +68,7 @@ class SpringApplicationLoader(protected val initialBuilder: SpringApplicationBui
     initialBuilder
       .in(context.environment)
       .loadConfig(context.initialConfiguration)
-      .overrides(overrides(context): Seq[_])
+      .overrides(overrides(context): Seq[Module])
   }
 
   /**
@@ -76,7 +76,7 @@ class SpringApplicationLoader(protected val initialBuilder: SpringApplicationBui
    * implementation of this method provides bindings that most applications
    * should include.
    */
-  protected def overrides(context: ApplicationLoader.Context): Seq[_] = {
+  protected def overrides(context: ApplicationLoader.Context): Seq[Module] = {
     SpringApplicationLoader.defaultOverrides(context)
   }
 
@@ -273,17 +273,16 @@ private object SpringApplicationLoader {
    * The default overrides provided by the Scala and Java GuiceApplicationLoaders.
    */
   def defaultOverrides(context: ApplicationLoader.Context) = {
-//    val global = GlobalSettings(context.initialConfiguration, context.environment)
-
-    val seq: Seq[_] = Seq(
-//      BindingKey(classOf[GlobalSettings]) to global,
-      bind[OptionalSourceMapper] to new OptionalSourceMapper(context.sourceMapper),
-      bind[WebCommands] to context.webCommands)
-    seq
+    Seq(
+      new Module {
+        def bindings(environment: Environment, configuration: Configuration) = Seq(
+          bind[OptionalSourceMapper] to new OptionalSourceMapper(context.sourceMapper),
+          bind[WebCommands] to context.webCommands)
+      }
+    )
   }
 
 }
-
 /**
  * A factory bean that wraps a provider.
  */
