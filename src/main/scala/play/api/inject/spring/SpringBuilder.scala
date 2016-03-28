@@ -102,7 +102,7 @@ abstract class SpringBuilder[Self] protected (
    */
   def createModule(): Seq[Module] = {
 
-    val injectorModule = new Module{
+    val injectorModule = new Module {
             def bindings(environment: Environment, configuration: Configuration) = Seq(
 
       // Java API injector is bound here so that it's available in both

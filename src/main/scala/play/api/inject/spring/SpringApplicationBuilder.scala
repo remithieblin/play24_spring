@@ -17,8 +17,7 @@ class SpringApplicationBuilder (
                                  eagerly: Boolean = false,
                                  loadConfiguration: Environment => Configuration = Configuration.load,
                                  global: Option[GlobalSettings] = None,
-                                 loadModules: (Environment, Configuration) => Seq[Module] =
-                                 (env, conf) => SpringableModule.loadModules(env, conf)
+                                 loadModules: (Environment, Configuration) => Seq[Module] = SpringableModule.loadModules
                                  )  extends SpringBuilder[SpringApplicationBuilder](
   environment, configuration, modules, overrides, disabled, eagerly
 ) {
