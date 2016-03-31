@@ -97,8 +97,7 @@ abstract class SpringBuilder[Self] protected (
   def applicationModule(): Seq[_] = createModule()
 
   /**
-   * Creation of the Guice Module used by the injector.
-   * Libraries like Guiceberry and Jukito that want to handle injector creation may find this helpful.
+   *
    */
   def createModule(): Seq[Module] = {
 
@@ -128,7 +127,22 @@ abstract class SpringBuilder[Self] protected (
    */
   final def disable[T](implicit tag: ClassTag[T]): Self = disable(tag.runtimeClass)
 
+  def prepareConfig(): Self
+
   def injector(): Injector = {
+
+    // call parent method that returns a Self
+    // overriden in child to load config
+    // call parent createModule that creates new modules and return a self
+    // finally call the new SpringInjector() method that creates factory and binds everything
+//    bindings(createModule()). prepareConfig()
+
+    springInjector()
+
+
+  }
+
+  private def springInjector(): Injector = {
     val ctx = new AnnotationConfigApplicationContext()
 
     val beanFactory = ctx.getDefaultListableBeanFactory
