@@ -230,7 +230,7 @@ abstract class SpringBuilder[Self] protected (
           // In this case, the key class is ignored, since Spring does not key beans by type, but a bean is eligible
           // for autowiring for all supertypes/interafaces.
           beanDef.setBeanClass(clazz.asInstanceOf[Class[_]])
-          SpringApplicationLoader.maybeSetScope(beanDef, clazz.asInstanceOf[Class[_]])
+          SpringBuilder.maybeSetScope(beanDef, clazz.asInstanceOf[Class[_]])
 
         case Some(ProviderConstructionTarget(providerClass)) =>
 
@@ -278,7 +278,7 @@ abstract class SpringBuilder[Self] protected (
         case None =>
         // Do nothing, we've already defaulted or detected the scope
         case Some(scope) =>
-          SpringApplicationLoader.setScope(beanDef, scope)
+          SpringBuilder.setScope(beanDef, scope)
       }
 
       beanFactory.registerBeanDefinition(beanName, beanDef)
@@ -322,6 +322,31 @@ abstract class SpringBuilder[Self] protected (
     disabled: Seq[Class[_]],
     eagerly: Boolean): Self
 
+}
+
+private object SpringBuilder {
+  /**
+   * Set the scope on the given bean definition if a scope annotation is declared on the class.
+   */
+  def maybeSetScope(bd: GenericBeanDefinition, clazz: Class[_]) {
+    clazz.getAnnotations.foreach { annotation =>
+      if (annotation.annotationType().getAnnotations.exists(_.annotationType() == classOf[javax.inject.Scope])) {
+        setScope(bd, annotation.annotationType())
+      }
+    }
+  }
+
+  /**
+   * Set the given scope annotation scope on the given bean definition.
+   */
+  def setScope(bd: GenericBeanDefinition, clazz: Class[_ <: Annotation]) = {
+    clazz match {
+      case singleton if singleton == classOf[javax.inject.Singleton] =>
+        bd.setScope(BeanDefinition.SCOPE_SINGLETON)
+      case other =>
+      // todo: use Jsr330ScopeMetaDataResolver to resolve and set scope
+    }
+  }
 }
 
 /**

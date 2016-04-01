@@ -73,30 +73,7 @@ class SpringApplicationLoader(protected val initialBuilder: SpringApplicationBui
 private object SpringApplicationLoader {
 
   /**
-   * Set the scope on the given bean definition if a scope annotation is declared on the class.
-   */
-  def maybeSetScope(bd: GenericBeanDefinition, clazz: Class[_]) {
-    clazz.getAnnotations.foreach { annotation =>
-      if (annotation.annotationType().getAnnotations.exists(_.annotationType() == classOf[javax.inject.Scope])) {
-        setScope(bd, annotation.annotationType())
-      }
-    }
-  }
-
-  /**
-   * Set the given scope annotation scope on the given bean definition.
-   */
-  def setScope(bd: GenericBeanDefinition, clazz: Class[_ <: Annotation]) = {
-    clazz match {
-      case singleton if singleton == classOf[javax.inject.Singleton] =>
-        bd.setScope(BeanDefinition.SCOPE_SINGLETON)
-      case other =>
-      // todo: use Jsr330ScopeMetaDataResolver to resolve and set scope
-    }
-  }
-
-  /**
-   * The default overrides provided by the Scala and Java GuiceApplicationLoaders.
+   * The default overrides provided by the Scala and Java SpringApplicationLoaders.
    */
   def defaultOverrides(context: ApplicationLoader.Context) = {
     Seq(

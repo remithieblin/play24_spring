@@ -55,7 +55,7 @@ class SpringInjector(factory: DefaultListableBeanFactory) extends Injector {
   def tryCreate[T](clazz: Class[T]) = {
     val beanDef = new GenericBeanDefinition()
     beanDef.setScope(BeanDefinition.SCOPE_PROTOTYPE)
-    SpringApplicationLoader.maybeSetScope(beanDef, clazz)
+    SpringBuilder.maybeSetScope(beanDef, clazz)
     beanDef.setBeanClass(clazz)
     beanDef.setPrimary(true)
     beanDef.setAutowireMode(AutowireCapableBeanFactory.AUTOWIRE_AUTODETECT)
