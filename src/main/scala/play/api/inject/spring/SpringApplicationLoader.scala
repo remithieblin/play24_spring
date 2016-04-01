@@ -53,21 +53,6 @@ class SpringApplicationLoader(protected val initialBuilder: SpringApplicationBui
   //      Some(createApplicationContext(environment, configuration, modules).getBean(classOf[Injector]))
   //    }
 
-
-
-  /**
-   * Turns an instance of an annotation into a spring qualifier descriptor.
-   */
-  private def qualifierFromInstance(instance: Annotation) = {
-    val annotationType = instance.annotationType()
-    val qualifier = new AutowireCandidateQualifier(annotationType)
-    AnnotationUtils.getAnnotationAttributes(instance).asScala.foreach {
-      case (attribute, value) => qualifier.setAttribute(attribute, value)
-    }
-
-    qualifier
-  }
-
 }
 
 private object SpringApplicationLoader {
