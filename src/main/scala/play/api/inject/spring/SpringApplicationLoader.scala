@@ -1,12 +1,10 @@
 package play.api.inject.spring
 
 import java.lang.annotation.Annotation
-import javax.inject.Provider
 
 import org.springframework.beans.TypeConverter
-import org.springframework.beans.factory.FactoryBean
-import org.springframework.beans.factory.annotation.{AutowiredAnnotationBeanPostProcessor, QualifierAnnotationAutowireCandidateResolver}
-import org.springframework.beans.factory.config.{AutowireCapableBeanFactory, BeanDefinition, BeanDefinitionHolder}
+import org.springframework.beans.factory.annotation.QualifierAnnotationAutowireCandidateResolver
+import org.springframework.beans.factory.config.{BeanDefinition, BeanDefinitionHolder}
 import org.springframework.beans.factory.support.{GenericBeanDefinition, _}
 import org.springframework.core.annotation.AnnotationUtils
 import play.api.ApplicationLoader.Context
@@ -110,27 +108,6 @@ private object SpringApplicationLoader {
     )
   }
 
-}
-
-/**
- * A factory bean that wraps a provider.
- */
-class ProviderFactoryBean[T](provider: Provider[T], objectType: Class[_], factory: AutowireCapableBeanFactory)
-  extends FactoryBean[T] {
-
-  lazy val injectedProvider = {
-    // Autowire the providers properties - Play needs this in a few places.
-    val bpp = new AutowiredAnnotationBeanPostProcessor()
-    bpp.setBeanFactory(factory)
-    bpp.processInjection(provider)
-    provider
-  }
-
-  def getObject = injectedProvider.get()
-
-  def getObjectType = objectType
-
-  def isSingleton = false
 }
 
 /**

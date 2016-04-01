@@ -2,10 +2,11 @@ package play.api.inject.spring
 
 import java.io.File
 import java.lang.annotation.Annotation
+import javax.inject.Provider
 
 import config.AppConfig
 import org.springframework.beans.factory.{NoUniqueBeanDefinitionException, NoSuchBeanDefinitionException, FactoryBean}
-import org.springframework.beans.factory.annotation.QualifierAnnotationAutowireCandidateResolver
+import org.springframework.beans.factory.annotation.{AutowiredAnnotationBeanPostProcessor, QualifierAnnotationAutowireCandidateResolver}
 import org.springframework.beans.factory.config.{BeanDefinitionHolder, ConstructorArgumentValues, AutowireCapableBeanFactory, BeanDefinition}
 import org.springframework.beans.factory.support.{AbstractBeanDefinition, AutowireCandidateQualifier, GenericBeanDefinition, DefaultListableBeanFactory}
 import org.springframework.context.annotation.AnnotationConfigApplicationContext
@@ -378,6 +379,26 @@ class BindingKeyFactoryBean[T](key: BindingKey[T], objectType: Class[_], factory
   def isSingleton = false
 }
 
+/**
+ * A factory bean that wraps a provider.
+ */
+class ProviderFactoryBean[T](provider: Provider[T], objectType: Class[_], factory: AutowireCapableBeanFactory)
+  extends FactoryBean[T] {
+
+  lazy val injectedProvider = {
+    // Autowire the providers properties - Play needs this in a few places.
+    val bpp = new AutowiredAnnotationBeanPostProcessor()
+    bpp.setBeanFactory(factory)
+    bpp.processInjection(provider)
+    provider
+  }
+
+  def getObject = injectedProvider.get()
+
+  def getObjectType = objectType
+
+  def isSingleton = false
+}
 
 
 
