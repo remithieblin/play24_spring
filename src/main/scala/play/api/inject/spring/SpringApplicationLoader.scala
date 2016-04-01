@@ -109,21 +109,3 @@ private object SpringApplicationLoader {
   }
 
 }
-
-/**
- * Hack to expose the checkQualifier method as public.
- */
-object QualifierChecker extends QualifierAnnotationAutowireCandidateResolver {
-
-  /**
-   * Override to expose as public
-   */
-  override def checkQualifier(bdHolder: BeanDefinitionHolder, annotation: Annotation, typeConverter: TypeConverter) = {
-    bdHolder.getBeanDefinition match {
-      case root: RootBeanDefinition => super.checkQualifier(bdHolder, annotation, typeConverter)
-      case nonRoot =>
-        val bdh = new BeanDefinitionHolder(RootBeanDefinitionCreator.create(nonRoot), bdHolder.getBeanName)
-        super.checkQualifier(bdh, annotation, typeConverter)
-    }
-  }
-}

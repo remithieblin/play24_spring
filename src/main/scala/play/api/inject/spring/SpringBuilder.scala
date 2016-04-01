@@ -5,10 +5,11 @@ import java.lang.annotation.Annotation
 import javax.inject.Provider
 
 import config.AppConfig
+import org.springframework.beans.TypeConverter
 import org.springframework.beans.factory.{NoUniqueBeanDefinitionException, NoSuchBeanDefinitionException, FactoryBean}
 import org.springframework.beans.factory.annotation.{AutowiredAnnotationBeanPostProcessor, QualifierAnnotationAutowireCandidateResolver}
 import org.springframework.beans.factory.config.{BeanDefinitionHolder, ConstructorArgumentValues, AutowireCapableBeanFactory, BeanDefinition}
-import org.springframework.beans.factory.support.{AbstractBeanDefinition, AutowireCandidateQualifier, GenericBeanDefinition, DefaultListableBeanFactory}
+import org.springframework.beans.factory.support._
 import org.springframework.context.annotation.AnnotationConfigApplicationContext
 import org.springframework.core.annotation.AnnotationUtils
 import play.api.inject._
@@ -400,12 +401,20 @@ class ProviderFactoryBean[T](provider: Provider[T], objectType: Class[_], factor
   def isSingleton = false
 }
 
+/**
+ * Hack to expose the checkQualifier method as public.
+ */
+object QualifierChecker extends QualifierAnnotationAutowireCandidateResolver {
 
-
-
-
-
-
-
-
-
+  /**
+   * Override to expose as public
+   */
+  override def checkQualifier(bdHolder: BeanDefinitionHolder, annotation: Annotation, typeConverter: TypeConverter) = {
+    bdHolder.getBeanDefinition match {
+      case root: RootBeanDefinition => super.checkQualifier(bdHolder, annotation, typeConverter)
+      case nonRoot =>
+        val bdh = new BeanDefinitionHolder(RootBeanDefinitionCreator.create(nonRoot), bdHolder.getBeanName)
+        super.checkQualifier(bdh, annotation, typeConverter)
+    }
+  }
+}
