@@ -1,18 +1,9 @@
 package play.api.inject.spring
 
-import java.lang.annotation.Annotation
-
-import org.springframework.beans.TypeConverter
-import org.springframework.beans.factory.annotation.QualifierAnnotationAutowireCandidateResolver
-import org.springframework.beans.factory.config.{BeanDefinition, BeanDefinitionHolder}
-import org.springframework.beans.factory.support.{GenericBeanDefinition, _}
-import org.springframework.core.annotation.AnnotationUtils
 import play.api.ApplicationLoader.Context
 import play.api._
 import play.api.inject._
 import play.core.WebCommands
-
-import scala.collection.JavaConverters._
 
 /**
  * based on the awesome work of jroper:
@@ -27,8 +18,6 @@ class SpringApplicationLoader(protected val initialBuilder: SpringApplicationBui
 
     builder(context).build()
   }
-
-
 
   /**
    * Construct a builder to use for loading the given context.
@@ -48,11 +37,6 @@ class SpringApplicationLoader(protected val initialBuilder: SpringApplicationBui
   protected def overrides(context: ApplicationLoader.Context): Seq[Module] = {
     SpringApplicationLoader.defaultOverrides(context)
   }
-
-  //    override def createInjector(environment: Environment, configuration: Configuration, modules: Seq[Any]): Option[Injector] = {
-  //      Some(createApplicationContext(environment, configuration, modules).getBean(classOf[Injector]))
-  //    }
-
 }
 
 private object SpringApplicationLoader {
