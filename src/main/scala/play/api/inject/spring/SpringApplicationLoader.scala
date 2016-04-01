@@ -3,14 +3,11 @@ package play.api.inject.spring
 import java.lang.annotation.Annotation
 import javax.inject.Provider
 
-import config.AppConfig
+import org.springframework.beans.TypeConverter
+import org.springframework.beans.factory.FactoryBean
 import org.springframework.beans.factory.annotation.{AutowiredAnnotationBeanPostProcessor, QualifierAnnotationAutowireCandidateResolver}
-import org.springframework.beans.factory.config.{AutowireCapableBeanFactory, BeanDefinition, BeanDefinitionHolder, ConstructorArgumentValues}
-import org.springframework.beans.factory.support.{DefaultListableBeanFactory, GenericBeanDefinition, _}
-import org.springframework.beans.factory.{BeanCreationException, FactoryBean, NoSuchBeanDefinitionException, NoUniqueBeanDefinitionException}
-import org.springframework.beans.{BeanInstantiationException, MutablePropertyValues, TypeConverter}
-import org.springframework.context.ApplicationContext
-import org.springframework.context.annotation.AnnotationConfigApplicationContext
+import org.springframework.beans.factory.config.{AutowireCapableBeanFactory, BeanDefinition, BeanDefinitionHolder}
+import org.springframework.beans.factory.support.{GenericBeanDefinition, _}
 import org.springframework.core.annotation.AnnotationUtils
 import play.api.ApplicationLoader.Context
 import play.api._
@@ -18,7 +15,6 @@ import play.api.inject._
 import play.core.WebCommands
 
 import scala.collection.JavaConverters._
-import scala.reflect.ClassTag
 
 /**
  * based on the awesome work of jroper:
@@ -131,62 +127,6 @@ class ProviderFactoryBean[T](provider: Provider[T], objectType: Class[_], factor
   }
 
   def getObject = injectedProvider.get()
-
-  def getObjectType = objectType
-
-  def isSingleton = false
-}
-
-/**
- * A factory bean that wraps a binding key alias.
- */
-class BindingKeyFactoryBean[T](key: BindingKey[T], objectType: Class[_], factory: DefaultListableBeanFactory) extends FactoryBean[T] {
-  /**
-   * The bean name, if it can be determined.
-   *
-   * Will either return a new bean name, or if the by type lookup should be done on request (in the case of an
-   * unqualified lookup because it's cheaper to delegate that to Spring) then do it on request.  Will throw an
-   * exception if a key for which no matching bean can be found is found.
-   */
-  lazy val beanName: Option[String] = {
-    key.qualifier match {
-      case None =>
-        None
-      case Some(QualifierClass(qualifier)) =>
-        val candidates = factory.getBeanNamesForType(key.clazz)
-        val matches = candidates.toList
-          .map(name => new BeanDefinitionHolder(factory.getBeanDefinition(name), name))
-          .filter { bdh =>
-          bdh.getBeanDefinition match {
-            case abd: AbstractBeanDefinition =>
-              abd.hasQualifier(qualifier.getName)
-            case _ => false
-          }
-        }.map(_.getBeanName)
-        getNameFromMatches(matches)
-      case Some(QualifierInstance(qualifier)) =>
-        val candidates = factory.getBeanNamesForType(key.clazz)
-        val matches = candidates.toList
-          .map(name => new BeanDefinitionHolder(factory.getBeanDefinition(name), name))
-          .filter( bdh => QualifierChecker.checkQualifier(bdh, qualifier, factory.getTypeConverter))
-          .map(_.getBeanName)
-        getNameFromMatches(matches)
-    }
-  }
-
-  private def getNameFromMatches(candidates: Seq[String]): Option[String] = {
-    candidates match {
-      case Nil => throw new NoSuchBeanDefinitionException(key.clazz, "Binding alias for type " + objectType + " to " + key,
-        "No bean found for binding alias")
-      case single :: Nil => Some(single)
-      case multiple => throw new NoUniqueBeanDefinitionException(key.clazz, multiple.asJava)
-    }
-
-  }
-
-  def getObject = {
-    beanName.fold(factory.getBean(key.clazz))(name => factory.getBean(name).asInstanceOf[T])
-  }
 
   def getObjectType = objectType
 
