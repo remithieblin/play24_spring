@@ -20,7 +20,7 @@ import scala.reflect.ClassTag
 
 
 /**
- * A builder for creating Guice-backed Play Injectors.
+ * A builder for creating Spring-backed Play Injectors.
  */
 abstract class SpringBuilder[Self] protected (
     environment: Environment,
