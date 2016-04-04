@@ -133,16 +133,7 @@ abstract class SpringBuilder[Self] protected (
   def prepareConfig(): Self
 
   def injector(): Injector = {
-
-    // call parent method that returns a Self
-    // overriden in child to load config
-    // call parent createModule that creates new modules and return a self
-    // finally call the new SpringInjector() method that creates factory and binds everything
-//    bindings(createModule()). prepareConfig()
-
     springInjector()
-
-
   }
 
   private def springInjector(): Injector = {
@@ -194,7 +185,6 @@ abstract class SpringBuilder[Self] protected (
 
       val beanDef = new GenericBeanDefinition()
 
-      // todo - come up with a better name
       val beanName = binding.key.toString()
 
       // Add qualifier if it exists
@@ -217,13 +207,8 @@ abstract class SpringBuilder[Self] protected (
 
       binding.target match {
         case None =>
-        // Bound to itself, set the key class as the bean class
-
         // not registered in GuiceableModuleConversions: def guice(bindings: Seq[PlayBinding[_]]): GuiceModule = {..}:
         //binding.target.foreach {..} => target = None will be ignored, which is the case when binding to self
-
-        //          beanDef.setBeanClass(binding.key.clazz)
-        //          SpringApplicationLoader_draft.maybeSetScope(beanDef, binding.key.clazz)
 
         case Some(ConstructionTarget(clazz)) =>
           // Bound to an implementation, set the impl class as the bean class.
@@ -235,7 +220,7 @@ abstract class SpringBuilder[Self] protected (
         case Some(ProviderConstructionTarget(providerClass)) =>
 
           val providerBeanName = providerClass.toString
-          //          val providerBeanName = beanName + "-provider"
+
           if (!beanFactory.containsBeanDefinition(providerBeanName)) {
 
             // The provider itself becomes a bean that gets autowired
@@ -251,7 +236,6 @@ abstract class SpringBuilder[Self] protected (
           beanDef.setFactoryBeanName(providerBeanName)
           beanDef.setFactoryMethodName("get")
           beanDef.setPrimary(false)
-        //          beanDef.setBeanClass(binding.key.clazz)
 
         case Some(ProviderTarget(provider)) =>
 
