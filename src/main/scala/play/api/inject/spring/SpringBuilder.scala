@@ -14,6 +14,7 @@ import org.springframework.context.annotation.AnnotationConfigApplicationContext
 import org.springframework.core.annotation.AnnotationUtils
 import play.api.inject._
 import play.api.{Configuration, Environment, Mode, PlayException}
+import play.utils.Reflect
 
 import scala.collection.JavaConverters._
 import scala.reflect.ClassTag
@@ -159,13 +160,27 @@ abstract class SpringBuilder[Self] protected (
       )
     }
 
-    ctx.register(classOf[AppConfig])
-    //      ctx.scan("provider", "router", "play", "controllers")
-    ctx.refresh()
+    val springConfig = configuration.getStringSeq("play.spring.configs").getOrElse(Seq.empty)
+    val confClasses: Seq[Class[_]] = springConfig.map(className => loadClass(className))
+    ctx.scan("router", "play", "controllers")
+    ctx.register(confClasses:_*)
 
+    ctx.refresh()
     ctx.start()
 
     injector
+  }
+
+  def loadClass(className: String): Class[_] = {
+    try {
+      environment.classLoader.loadClass(className)
+    } catch {
+      case e: ClassNotFoundException => throw e
+      case e: VirtualMachineError => throw e
+      case e: ThreadDeath => throw e
+      case e: Throwable =>
+        throw new PlayException(s"Cannot load $className", s"[$className] was not loaded.", e)
+    }
   }
 
   /**
