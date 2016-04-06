@@ -17,9 +17,10 @@ class SpringApplicationBuilder (
                                  eagerly: Boolean = false,
                                  loadConfiguration: Environment => Configuration = Configuration.load,
                                  global: Option[GlobalSettings] = None,
-                                 loadModules: (Environment, Configuration) => Seq[Module] = SpringableModule.loadModules
+                                 loadModules: (Environment, Configuration) => Seq[Module] = SpringableModule.loadModules,
+                                 beanReader: PlayModuleBeanDefinitionReader = DefaultPlayModuleBeanDefinitionReader()
                                  )  extends SpringBuilder[SpringApplicationBuilder](
-  environment, configuration, modules, overrides, disabled, eagerly
+  environment, configuration, modules, overrides, disabled, beanReader, eagerly
 ) {
 
   // extra constructor for creating from Java
@@ -33,8 +34,9 @@ class SpringApplicationBuilder (
                                     configuration: Configuration,
                                     modules: Seq[Module], overrides: Seq[Module],
                                     disabled: Seq[Class[_]],
+                                    beanReader: PlayModuleBeanDefinitionReader,
                                     eagerly: Boolean): SpringApplicationBuilder = {
-    copy(environment, configuration, modules, overrides, disabled, eagerly)
+    copy(environment, configuration, modules, overrides, disabled, beanReader, eagerly)
   }
 
 
@@ -97,9 +99,11 @@ class SpringApplicationBuilder (
                     modules: Seq[Module] = modules,
                     overrides: Seq[Module] = overrides,
                     disabled: Seq[Class[_]] = disabled,
+                    beanReader: PlayModuleBeanDefinitionReader = beanReader,
                     eagerly: Boolean = eagerly,
                     loadConfiguration: Environment => Configuration = loadConfiguration,
-                    global: Option[GlobalSettings] = global
+                    global: Option[GlobalSettings] = global,
+                    loadModules: (Environment, Configuration) => Seq[Module] = loadModules
                     ): SpringApplicationBuilder =
-    new SpringApplicationBuilder(environment, configuration, modules, overrides, disabled, eagerly, loadConfiguration, global)
+    new SpringApplicationBuilder(environment, configuration, modules, overrides, disabled, eagerly, loadConfiguration, global, loadModules, beanReader)
 }

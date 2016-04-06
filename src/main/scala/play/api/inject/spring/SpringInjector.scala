@@ -30,18 +30,15 @@ class SpringInjector(factory: DefaultListableBeanFactory) extends Injector {
       case e: NoSuchBeanDefinitionException =>
         // if the class is a concrete type, attempt to create a just in time binding
         if (!clazz.isInterface /* todo check if abstract, how? */) {
-          println("lol not interface, let's try: " + clazz)
           tryCreate(clazz)
         } else {
           throw e
         }
 
       case e: BeanInstantiationException =>
-        println("lol BeanInstantiationException")
         throw e
 
       case e: BeanCreationException =>
-        println("lol BeanCreationException")
         throw e
 
       case e: Exception => throw e
