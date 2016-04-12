@@ -2,7 +2,7 @@ package play.api.inject.spring
 
 import play.api.inject.{Injector => PlayInjector, _}
 import play.api.routing.Router
-import play.api.{ Application, Configuration, Environment, GlobalSettings, Logger, OptionalSourceMapper }
+import play.api._
 import play.core.{ DefaultWebCommands, WebCommands }
 
 /**
@@ -45,9 +45,13 @@ class SpringApplicationBuilder (
     val appConfiguration = initialConfiguration ++ configuration
     val globalSettings = global.getOrElse(GlobalSettings(appConfiguration, environment))
 
-    // TODO: Logger should be application specific, and available via dependency injection.
-    //       Creating multiple applications will stomp on the global logger configuration.
-    Logger.configure(environment)
+    LoggerConfigurator(environment.classLoader).foreach {
+      _.configure(environment)
+    }
+
+    if (shouldDisplayLoggerDeprecationMessage(appConfiguration)) {
+      Logger.warn("Logger configuration in conf files is deprecated and has no effect. Use a logback configuration file instead.")
+    }
 
     if (appConfiguration.underlying.hasPath("logger")) {
       Logger.warn("Logger configuration in conf files is deprecated and has no effect. Use a logback configuration file instead.")
@@ -66,6 +70,46 @@ class SpringApplicationBuilder (
           )
         })
       )
+  }
+
+  /**
+   * Checks if the path contains the logger path
+   * and whether or not one of the keys contains a deprecated value
+   * TODO: extract to class to be reused across Guice and Spring
+   *
+   * @param appConfiguration The app configuration
+   * @return Returns true if one of the keys contains a deprecated value, otherwise false
+   */
+  def shouldDisplayLoggerDeprecationMessage(appConfiguration: Configuration): Boolean = {
+    import scala.collection.JavaConverters._
+    import scala.collection.mutable
+
+    val deprecatedValues = List("DEBUG", "WARN", "ERROR", "INFO", "TRACE", "OFF")
+
+    // Recursively checks each key to see if it contains a deprecated value
+    def hasDeprecatedValue(values: mutable.Map[String, AnyRef]): Boolean = {
+      values.exists {
+        case (_, value: String) if deprecatedValues.contains(value) =>
+          true
+        case (_, value: java.util.Map[String, AnyRef]) =>
+          hasDeprecatedValue(value.asScala)
+        case _ =>
+          false
+      }
+    }
+
+    if (appConfiguration.underlying.hasPath("logger")) {
+      appConfiguration.underlying.getAnyRef("logger") match {
+        case value: String =>
+          hasDeprecatedValue(mutable.Map("logger" -> value))
+        case value: java.util.Map[String, AnyRef] =>
+          hasDeprecatedValue(value.asScala)
+        case _ =>
+          false
+      }
+    } else {
+      false
+    }
   }
 
   /**
