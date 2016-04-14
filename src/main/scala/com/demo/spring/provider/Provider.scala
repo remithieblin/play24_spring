@@ -1,4 +1,4 @@
-package provider
+package com.demo.spring.provider
 
 trait Provider {
 

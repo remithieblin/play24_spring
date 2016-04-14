@@ -1,4 +1,4 @@
-package service
+package com.demo.spring.service
 
 trait Service {
 

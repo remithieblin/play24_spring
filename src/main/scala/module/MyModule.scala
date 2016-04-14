@@ -1,7 +1,7 @@
 package module
 
 import com.google.inject.AbstractModule
-import provider.{MyProvider, Provider}
+import com.demo.spring.provider.{MyProvider, Provider}
 
 class MyModule extends AbstractModule{
 

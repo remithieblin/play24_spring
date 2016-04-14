@@ -1,15 +1,15 @@
-package service
+package com.demo.spring.service
 
 import javax.inject.{Inject, Named}
 
-import provider.Provider
+import com.demo.spring.provider.Provider
 
 @Named
 class MyService @Inject() (provider: Provider) extends Service {
 
   override def create(): Unit = {
 
-    println("lol in service")
+    println("In service")
     provider.create()
   }
 }
