@@ -110,15 +110,8 @@ abstract class SpringBuilder[Self] protected (
   def createModule(): Seq[Module] = {
 
     val injectorModule = new Module {
-            def bindings(environment: Environment, configuration: Configuration) = Seq(
-
-      // Java API injector is bound here so that it's available in both
-      // the default application loader and the Java Guice builders
-//      bind[play.inject.Injector].to[play.inject.DelegateInjector]
-            //TODO use the package method bind() when moving into actual playframework project
-
-        BindingKey(implicitly[ClassTag[play.inject.Injector]].runtimeClass.asInstanceOf[Class[play.inject.Injector]])
-          .to[play.inject.DelegateInjector]
+      def bindings(environment: Environment, configuration: Configuration) = Seq(
+        bind[play.inject.Injector].to[play.inject.DelegateInjector]
     )}
     val enabledModules: Seq[Module] = filterOut(disabled, modules)
     val bindingModules: Seq[Module] = enabledModules :+ injectorModule
