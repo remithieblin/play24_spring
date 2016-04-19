@@ -17,9 +17,10 @@ class SpringApplicationBuilder (
                                  eagerly: Boolean = false,
                                  loadConfiguration: Environment => Configuration = Configuration.load,
                                  loadModules: (Environment, Configuration) => Seq[Module] = SpringableModule.loadModules,
-                                 beanReader: PlayModuleBeanDefinitionReader = DefaultPlayModuleBeanDefinitionReader()
+                                 beanReader: PlayModuleBeanDefinitionReader = DefaultPlayModuleBeanDefinitionReader(),
+                                 packages: Seq[String] = Seq.empty
                                  )  extends SpringBuilder[SpringApplicationBuilder](
-  environment, configuration, modules, overrides, disabled, beanReader, eagerly
+  environment, configuration, modules, overrides, disabled, beanReader, packages, eagerly
 ) {
 
   // extra constructor for creating from Java
@@ -34,8 +35,9 @@ class SpringApplicationBuilder (
                                     modules: Seq[Module], overrides: Seq[Module],
                                     disabled: Seq[Class[_]],
                                     beanReader: PlayModuleBeanDefinitionReader,
+                                    packages: Seq[String],
                                     eagerly: Boolean): SpringApplicationBuilder = {
-    copy(environment, configuration, modules, overrides, disabled, beanReader, eagerly)
+    copy(environment, configuration, modules, overrides, disabled, beanReader, packages, eagerly)
   }
 
 
@@ -141,9 +143,10 @@ class SpringApplicationBuilder (
                     overrides: Seq[Module] = overrides,
                     disabled: Seq[Class[_]] = disabled,
                     beanReader: PlayModuleBeanDefinitionReader = beanReader,
+                    packages: Seq[String] = packages,
                     eagerly: Boolean = eagerly,
                     loadConfiguration: Environment => Configuration = loadConfiguration,
                     loadModules: (Environment, Configuration) => Seq[Module] = loadModules
                     ): SpringApplicationBuilder =
-    new SpringApplicationBuilder(environment, configuration, modules, overrides, disabled, eagerly, loadConfiguration, loadModules, beanReader)
+    new SpringApplicationBuilder(environment, configuration, modules, overrides, disabled, eagerly, loadConfiguration, loadModules, beanReader, packages)
 }
