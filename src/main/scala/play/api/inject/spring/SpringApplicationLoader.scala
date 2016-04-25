@@ -27,7 +27,7 @@ class SpringApplicationLoader(protected val initialBuilder: SpringApplicationBui
       .in(context.environment)
       .loadConfig(context.initialConfiguration)
       .overrides(overrides(context): Seq[Module])
-      .scanning(defaultPackages())
+      .scanning(DefaultPlayModuleBeanDefinitionReader.defaultPackages())
   }
 
   /**
@@ -38,12 +38,6 @@ class SpringApplicationLoader(protected val initialBuilder: SpringApplicationBui
   protected def overrides(context: ApplicationLoader.Context): Seq[Module] = {
     SpringApplicationLoader.defaultOverrides(context)
   }
-
-  /**
-   * Spring finds most of the component through scanning the base Play packages.
-   * @return Seq[String]
-   */
-  protected def defaultPackages(): Seq[String] = Seq("router", "play", "controllers")
 }
 
 private object SpringApplicationLoader {

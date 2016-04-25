@@ -129,7 +129,6 @@ class SpringApplicationBuilder (
    * Create a new Play Application using this configured builder.
    */
   def build(): Application = {
-
     prepareConfig().bindings(createModule()).injector().instanceOf[Application]
   }
 
