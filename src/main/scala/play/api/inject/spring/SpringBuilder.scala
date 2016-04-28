@@ -141,7 +141,7 @@ abstract class SpringBuilder[Self] protected (
     springInjector()
   }
 
-  private def springInjector(): Injector = {
+  def springInjector(): Injector = {
     val ctx = new AnnotationConfigApplicationContext()
 
     val beanFactory = ctx.getDefaultListableBeanFactory

@@ -1,7 +1,6 @@
 package play.api.inject.spring
 
-import play.api.inject.{Injector => PlayInjector, _}
-import play.api.routing.Router
+import play.api.inject._
 import play.api._
 import play.core.{ DefaultWebCommands, WebCommands }
 
@@ -126,10 +125,21 @@ class SpringApplicationBuilder (
     loadConfig(env => conf)
 
   /**
+   * Set the module loader.
+   * Overrides the default or any previously configured values.
+   */
+  def load(loader: (Environment, Configuration) => Seq[Module]): SpringApplicationBuilder =
+    copy(loadModules = loader)
+
+  /**
    * Create a new Play Application using this configured builder.
    */
   def build(): Application = {
-    prepareConfig().bindings(createModule()).injector().instanceOf[Application]
+    injector().instanceOf[Application]
+  }
+
+  override def injector(): Injector = {
+    prepareConfig().bindings(createModule()).springInjector()
   }
 
   /**
