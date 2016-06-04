@@ -54,10 +54,6 @@ class SpringApplicationBuilder (
       Logger.warn("Logger configuration in conf files is deprecated and has no effect. Use a logback configuration file instead.")
     }
 
-    if (appConfiguration.underlying.hasPath("logger")) {
-      Logger.warn("Logger configuration in conf files is deprecated and has no effect. Use a logback configuration file instead.")
-    }
-
     val loadedModules = loadModules(environment, appConfiguration)
 
     copy(configuration = appConfiguration)

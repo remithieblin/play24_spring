@@ -20,4 +20,6 @@ resolvers += "scalaz-bintray" at "http://dl.bintray.com/scalaz/releases"
 // other, legacy style, accesses its actions statically.
 routesGenerator := InjectedRoutesGenerator
 
+unmanagedSourceDirectories in Compile += baseDirectory.value / "app"
 scalaSource in Compile := baseDirectory.value / "src/main/scala"
+javaSource in Compile := baseDirectory.value / "src/main/java"

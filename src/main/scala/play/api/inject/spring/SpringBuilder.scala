@@ -165,7 +165,8 @@ abstract class SpringBuilder[Self] protected (
     }
 
     if(packages.nonEmpty) {
-      ctx.scan(packages:_*)
+//      ctx.
+//      ctx.scan(packages:_*)
     }
 
     val springConfig = configuration.getStringSeq("play.spring.configs").getOrElse(Seq.empty)
