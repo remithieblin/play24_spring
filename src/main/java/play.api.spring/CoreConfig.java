@@ -9,12 +9,12 @@ import play.libs.concurrent.HttpExecutionContext;
 import javax.inject.Singleton;
 
 @Configuration
-@ComponentScan(basePackages = {"router", "play", "controllers"},
-        includeFilters = @ComponentScan.Filter(type = FilterType.ANNOTATION, value = Singleton.class),
-        excludeFilters = {
-                @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, value = Crypto.class),
-                @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, value = HttpExecutionContext.class)
-        }
-)
+//@ComponentScan(basePackages = {"router", "play", "controllers"},
+//        includeFilters = @ComponentScan.Filter(type = FilterType.ANNOTATION, value = Singleton.class),
+//        excludeFilters = {
+//                @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, value = Crypto.class),
+//                @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, value = HttpExecutionContext.class)
+//        }
+//)
 public class CoreConfig {
 }

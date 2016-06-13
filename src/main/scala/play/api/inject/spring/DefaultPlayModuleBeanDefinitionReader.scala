@@ -49,13 +49,28 @@ class DefaultPlayModuleBeanDefinitionReader extends PlayModuleBeanDefinitionRead
         case None =>
         // not registered in GuiceableModuleConversions: def guice(bindings: Seq[PlayBinding[_]]): GuiceModule = {..}:
         //binding.target.foreach {..} => target = None will be ignored, which is the case when binding to self
+          beanDef.setBeanClass(binding.key.clazz)
+          SpringBuilder.maybeSetScope(beanDef, binding.key.clazz)
 
         case Some(ConstructionTarget(clazz)) =>
           // Bound to an implementation, set the impl class as the bean class.
           // In this case, the key class is ignored, since Spring does not key beans by type, but a bean is eligible
           // for autowiring for all supertypes/interafaces.
-          beanDef.setBeanClass(clazz.asInstanceOf[Class[_]])
-          SpringBuilder.maybeSetScope(beanDef, clazz.asInstanceOf[Class[_]])
+
+          if(clazz.isInterface) {
+            beanDef.setBeanClass(classOf[BindingKeyFactoryBean[_]])
+            val args = new ConstructorArgumentValues()
+            args.addIndexedArgumentValue(0, clazz)
+            args.addIndexedArgumentValue(1, binding.key.clazz)
+            args.addIndexedArgumentValue(2, beanFactory)
+            beanDef.setConstructorArgumentValues(args)
+          } else {
+            beanDef.setBeanClass(clazz.asInstanceOf[Class[_]])
+            SpringBuilder.maybeSetScope(beanDef, clazz.asInstanceOf[Class[_]])
+          }
+
+          beanDef.setPrimary(false)
+
 
         case Some(ProviderConstructionTarget(providerClass)) =>
 
@@ -66,6 +81,9 @@ class DefaultPlayModuleBeanDefinitionReader extends PlayModuleBeanDefinitionRead
             // The provider itself becomes a bean that gets autowired
             val providerBeanDef = new GenericBeanDefinition()
             providerBeanDef.setBeanClass(providerClass)
+            providerClass.getAnnotations.filter(_.annotationType().getName.equals("javax.inject.Named")).foreach {
+              a: Annotation => beanDef.addQualifier(qualifierFromInstance(a))
+            }
             providerBeanDef.setAutowireMode(AutowireCapableBeanFactory.AUTOWIRE_CONSTRUCTOR)
             providerBeanDef.setScope(BeanDefinition.SCOPE_SINGLETON)
             providerBeanDef.setAutowireCandidate(false)

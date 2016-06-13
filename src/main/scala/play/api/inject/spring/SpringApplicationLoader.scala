@@ -1,5 +1,6 @@
 package play.api.inject.spring
 
+import controllers.Assets
 import play.api.ApplicationLoader.Context
 import play.api._
 import play.api.inject._
@@ -50,7 +51,11 @@ private object SpringApplicationLoader {
       new Module {
         def bindings(environment: Environment, configuration: Configuration) = Seq(
           bind[OptionalSourceMapper] to new OptionalSourceMapper(context.sourceMapper),
-          bind[WebCommands] to context.webCommands)
+          bind[WebCommands] to context.webCommands,
+          bind[Assets].to[Assets],
+          bind[play.Configuration].to[play.Configuration]
+        )
+
       }
     )
   }
