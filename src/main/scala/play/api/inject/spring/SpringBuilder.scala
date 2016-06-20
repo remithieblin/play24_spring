@@ -155,9 +155,15 @@ abstract class SpringBuilder[Self] protected (
     //build modules
     val modulesToRegister = applicationModule()
 
+    val disabledBindings = configuration.getStringSeq("play.bindings.disabled").getOrElse(Seq.empty)
+    val disabledBindingClasses: Seq[Class[_]] = disabledBindings.map(className => loadClass(className))
+
     //register modules
     modulesToRegister.foreach {
-      case playModule: Module => playModule.bindings(environment, configuration).foreach(b => beanReader.bind(beanFactory, b))
+      case playModule: Module =>
+        playModule.bindings(environment, configuration)
+          .filter(b => !disabledBindingClasses.contains(b.key.clazz))
+          .foreach(b => beanReader.bind(beanFactory, b))
       case unknown => throw new PlayException(
         "Unknown module type",
         s"Module [$unknown] is not a Play module or a Guice module"
