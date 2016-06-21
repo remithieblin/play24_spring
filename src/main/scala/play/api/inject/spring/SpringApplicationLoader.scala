@@ -54,7 +54,6 @@ private object SpringApplicationLoader {
           bind[Assets].to[Assets],
           bind[play.Configuration].to[play.Configuration]
         )
-
       }
     )
   }

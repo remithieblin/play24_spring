@@ -47,8 +47,6 @@ class DefaultPlayModuleBeanDefinitionReader extends PlayModuleBeanDefinitionRead
 
       binding.target match {
         case None =>
-        // not registered in GuiceableModuleConversions: def guice(bindings: Seq[PlayBinding[_]]): GuiceModule = {..}:
-        //binding.target.foreach {..} => target = None will be ignored, which is the case when binding to self
           beanDef.setBeanClass(binding.key.clazz)
           SpringBuilder.maybeSetScope(beanDef, binding.key.clazz)
 
@@ -69,9 +67,6 @@ class DefaultPlayModuleBeanDefinitionReader extends PlayModuleBeanDefinitionRead
             SpringBuilder.maybeSetScope(beanDef, clazz.asInstanceOf[Class[_]])
           }
 
-          beanDef.setPrimary(false)
-
-
         case Some(ProviderConstructionTarget(providerClass)) =>
 
           val providerBeanName = providerClass.toString
@@ -81,7 +76,7 @@ class DefaultPlayModuleBeanDefinitionReader extends PlayModuleBeanDefinitionRead
             // The provider itself becomes a bean that gets autowired
             val providerBeanDef = new GenericBeanDefinition()
             providerBeanDef.setBeanClass(providerClass)
-            providerClass.getAnnotations.filter(_.annotationType().getName.equals("javax.inject.Named")).foreach {
+            providerClass.getAnnotations.filter(_.annotationType().getName == "javax.inject.Named").foreach {
               a: Annotation => beanDef.addQualifier(qualifierFromInstance(a))
             }
             providerBeanDef.setAutowireMode(AutowireCapableBeanFactory.AUTOWIRE_CONSTRUCTOR)
