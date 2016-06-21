@@ -141,10 +141,4 @@ object DefaultPlayModuleBeanDefinitionReader {
 
   def apply() = new DefaultPlayModuleBeanDefinitionReader()
 
-  /**
-   * Spring finds most of the component through scanning the base Play packages.
-   * @return Seq[String]
-   */
-  def defaultPackages(): Seq[String] = Seq("router", "play", "controllers")
-
 }
