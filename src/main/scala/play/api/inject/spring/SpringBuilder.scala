@@ -27,7 +27,6 @@ abstract class SpringBuilder[Self] protected (
     overrides: Seq[Module],
     disabled: Seq[Class[_]],
     beanReader: PlayModuleBeanDefinitionReader,
-    packages: Seq[String],
     eagerly: Boolean) {
 
   /**
@@ -97,12 +96,6 @@ abstract class SpringBuilder[Self] protected (
     copyBuilder(overrides = overrides ++ overrideModules)
 
   /**
-   * Override bindings using Spring modules, Play modules, or Play bindings.
-   */
-  final def scanning(overridePackages: Seq[String]): Self =
-    copyBuilder(packages = packages ++ overridePackages)
-
-  /**
    * Override beanReader
    */
   final def withBeanReader(beanReader: PlayModuleBeanDefinitionReader): Self =
@@ -170,11 +163,6 @@ abstract class SpringBuilder[Self] protected (
       )
     }
 
-    if(packages.nonEmpty) {
-//      ctx.
-//      ctx.scan(packages:_*)
-    }
-
     val springConfig = configuration.getStringSeq("play.spring.configs").getOrElse(Seq.empty)
     val confClasses: Seq[Class[_]] = springConfig.map(className => loadClass(className))
     if(confClasses.nonEmpty) {
@@ -209,9 +197,8 @@ abstract class SpringBuilder[Self] protected (
     overrides: Seq[Module] = overrides,
     disabled: Seq[Class[_]] = disabled,
     beanReader: PlayModuleBeanDefinitionReader = beanReader,
-    packages: Seq[String] = packages,
     eagerly: Boolean = eagerly): Self =
-    newBuilder(environment, configuration, modules, overrides, disabled, beanReader, packages, eagerly)
+    newBuilder(environment, configuration, modules, overrides, disabled, beanReader, eagerly)
 
   /**
    * Create a new Self for this immutable builder.
@@ -224,7 +211,6 @@ abstract class SpringBuilder[Self] protected (
     overrides: Seq[Module],
     disabled: Seq[Class[_]],
     beanReader: PlayModuleBeanDefinitionReader,
-    packages: Seq[String],
     eagerly: Boolean): Self
 
 }

@@ -28,7 +28,6 @@ class SpringApplicationLoader(protected val initialBuilder: SpringApplicationBui
       .in(context.environment)
       .loadConfig(context.initialConfiguration)
       .overrides(overrides(context): Seq[Module])
-      .scanning(DefaultPlayModuleBeanDefinitionReader.defaultPackages())
   }
 
   /**
