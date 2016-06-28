@@ -62,6 +62,7 @@ class DefaultPlayModuleBeanDefinitionReader extends PlayModuleBeanDefinitionRead
             args.addIndexedArgumentValue(1, binding.key.clazz)
             args.addIndexedArgumentValue(2, beanFactory)
             beanDef.setConstructorArgumentValues(args)
+            beanDef.setPrimary(false)
           } else {
             beanDef.setBeanClass(clazz.asInstanceOf[Class[_]])
             SpringBuilder.maybeSetScope(beanDef, clazz.asInstanceOf[Class[_]])

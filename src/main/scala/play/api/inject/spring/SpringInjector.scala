@@ -54,7 +54,14 @@ class SpringInjector(factory: DefaultListableBeanFactory) extends Injector {
     beanDef.setScope(BeanDefinition.SCOPE_PROTOTYPE)
     SpringBuilder.maybeSetScope(beanDef, clazz)
     beanDef.setBeanClass(clazz)
+
+    /**
+     * Set primary to make sure this class is selected over the "parent" one declared in the bindings which is likely
+     * to be an interface or provider.
+     * See  interface play.api.routing.Router and actual class router.Routes
+     */
     beanDef.setPrimary(true)
+
     beanDef.setAutowireMode(AutowireCapableBeanFactory.AUTOWIRE_AUTODETECT)
     factory.registerBeanDefinition(clazz.toString, beanDef)
     factory.clearMetadataCache()
