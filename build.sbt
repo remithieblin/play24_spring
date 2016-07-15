@@ -11,7 +11,7 @@ libraryDependencies ++= Seq(
   cache,
   ws,
   "org.springframework" % "spring-context" % "4.2.1.RELEASE",
-  "com.rthieblin"% "play-spring-loader" % "1.0-SNAPSHOT",
+  "com.actimust"% "play-spring-loader" % "1.0-SNAPSHOT",
   specs2 % Test
 )
 
